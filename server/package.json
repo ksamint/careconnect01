@@ -1,0 +1,15 @@
+{
+  "name": "careconnect-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CareConnect API + static server (node:http + node:sqlite, no dependencies)",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning index.mjs",
+    "dev": "DATA_DIR=./data node --disable-warning=ExperimentalWarning --watch index.mjs",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.mjs"
+  }
+}

@@ -20,3 +20,7 @@ stitch-design/
 
 # Docker local overrides
 docker-compose.override.yml
+
+# SQLite database and backups
+data/
+server/data/

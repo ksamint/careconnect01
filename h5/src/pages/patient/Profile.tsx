@@ -2,10 +2,19 @@ import { useNavigate } from 'react-router-dom'
 import { useApp, isAdmin } from '../../context/AppContext'
 import { PatientHeader, PatientLayout } from '../../components/layout'
 import { GlassCard, Icon } from '../../components/ui'
-import { MDASI_SYMPTOMS, avgScore } from '../../data/mock'
+import { useStudy } from '../../study/useStudy'
+import { useL } from '../../study/useL'
+import { usePatientRecord } from '../../study/usePatientRecord'
+import { currentResponses, displayMean, countMissing } from '../../study/logic'
 
 export default function Profile() {
-  const { tr, locale, user, toggleLocale, logout, assessmentDone, lastScores, assessmentHistory, privacyMode, togglePrivacyMode } = useApp()
+  const { tr, locale, user, toggleLocale, logout, privacyMode, togglePrivacyMode } = useApp()
+  const { data } = useStudy()
+  const L = useL()
+  const participant = usePatientRecord()
+  const history = data && participant
+    ? data.submissions.filter(s => s.participantId === participant.id).sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1))
+    : []
   const navigate = useNavigate()
 
   const displayName = user ? (locale === 'zh' ? user.displayNameZh : user.displayNameEn) : '—'
@@ -29,7 +38,7 @@ export default function Profile() {
               </div>
               <div>
                 <p className="font-semibold text-lg">{displayName}</p>
-                <p className="text-sm text-outline">{user?.username} · {tr.studyId}</p>
+                <p className="text-sm text-outline">{participant?.id ?? user?.username} · {tr.studyId}</p>
               </div>
             </div>
             <button type="button" onClick={togglePrivacyMode} className="flex items-center justify-between w-full text-left">
@@ -43,39 +52,24 @@ export default function Profile() {
             </button>
           </GlassCard>
 
-          {assessmentDone && Object.keys(lastScores).length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider">{tr.viewResults}</h2>
-                <button type="button" onClick={() => navigate('/patient/assessment')} className="text-xs text-secondary font-medium">{tr.retakeAssessment}</button>
-              </div>
-              <GlassCard className="p-4">
-                <div className="flex justify-between mb-3">
-                  <span className="text-sm text-outline">{tr.avgScore}</span>
-                  <span className="text-xl font-light text-primary">{avgScore(lastScores)}</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {MDASI_SYMPTOMS.slice(0, 6).map(s => (
-                    <div key={s.id} className="flex justify-between text-sm py-1">
-                      <span className="text-on-surface-variant truncate mr-2">{tr.symptoms[s.id]}</span>
-                      <span className="font-medium">{lastScores[s.id] ?? 0}</span>
-                    </div>
-                  ))}
-                </div>
-              </GlassCard>
-            </section>
-          )}
-
-          {assessmentHistory.length > 0 && (
+          {history.length > 0 && data && (
             <section>
               <h2 className="text-sm font-semibold text-on-surface-variant uppercase tracking-wider mb-3">{tr.assessmentHistory}</h2>
               <div className="flex flex-col gap-2">
-                {assessmentHistory.slice(0, 5).map((h, i) => (
-                  <GlassCard key={i} className="p-3 flex justify-between items-center">
-                    <span className="text-sm text-on-surface">{new Date(h.date).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}</span>
-                    <span className="text-sm font-medium text-primary">{tr.avgScore} {h.avg}</span>
-                  </GlassCard>
-                ))}
+                {history.map(h => {
+                  const r = currentResponses(data, h)
+                  const missing = countMissing(r)
+                  return (
+                    <GlassCard key={h.id} className="p-3 flex justify-between items-center">
+                      <span className="text-sm text-on-surface">
+                        {L(`第 ${h.cycleNo} 周期`, `Cycle ${h.cycleNo}`)} · {h.visitLabel} · {new Date(h.completedAt).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}
+                      </span>
+                      <span className="text-sm font-medium text-primary">
+                        {tr.avgScore} {displayMean(r) ?? '—'}{missing ? L(` · ${missing} 题未答`, ` · ${missing} skipped`) : ''}
+                      </span>
+                    </GlassCard>
+                  )
+                })}
               </div>
             </section>
           )}

@@ -1,20 +1,25 @@
 services:
-  careconnect-h5:
+  careconnect:
     build:
       context: .
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-    image: careconnect-h5:latest
-    container_name: careconnect-h5
+    image: careconnect:latest
+    container_name: careconnect
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-8080}:80"
+      - "${HOST_PORT:-8080}:8080"
     environment:
       - TZ=Asia/Shanghai
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      # Initial passwords, used only when the database is first created. Change them in the admin console afterwards.
+      - DEFAULT_PASSWORD=${DEFAULT_PASSWORD:-123456a}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      # Set to 0 to start without the DEMO- training participants.
+      - SEED_DEMO=${SEED_DEMO:-1}
+    volumes:
+      # SQLite database + daily backups (data/backups). Copy out with: docker compose cp careconnect:/data ./careconnect-backup
+      - careconnect-data:/data
+
+volumes:
+  careconnect-data:

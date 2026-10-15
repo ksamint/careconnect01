@@ -12,27 +12,30 @@ export interface AuthUser {
   /** External users are bound to one portal; admins use the hub. */
   portal: Portal | null
   organizationId: string
+  /** Patient logins are linked to one study participant. */
+  participantId?: string | null
 }
 
 export interface AuthSession {
   user: AuthUser
-  /** Placeholder for Logto access token / session id. */
-  provider: 'local' | 'logto'
+  provider: 'api' | 'logto'
   issuedAt: number
 }
 
 export type LoginResult =
   | { ok: true; session: AuthSession }
-  | { ok: false; error: 'invalid_credentials' | 'account_locked' }
+  | { ok: false; error: 'invalid_credentials' | 'account_locked' | 'withdrawn' | 'network' }
 
 export interface AuthProvider {
-  readonly name: 'local' | 'logto'
+  readonly name: 'api' | 'logto'
   login(username: string, password: string): Promise<LoginResult>
   logout(): Promise<void>
   getSession(): AuthSession | null
   /** Only system_admin and org_admin may reset passwords. */
   resetPassword(actor: AuthUser, targetUsername: string, newPassword: string): Promise<{ ok: boolean; error?: string }>
-  listManagedUsers(actor: AuthUser): AuthUser[]
+  listManagedUsers(actor: AuthUser): Promise<AuthUser[]>
+  /** Re-check the signed-in user's password before a sensitive action (e.g. editing patient answers). */
+  verifyPassword(password: string): Promise<boolean>
 }
 
 export function isAdmin(role: AdminRole): boolean {

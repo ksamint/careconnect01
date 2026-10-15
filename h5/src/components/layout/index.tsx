@@ -118,10 +118,10 @@ function ShellHeader({ title, homeTo, icon = 'clinical_notes', resolveBack }: Sh
 }
 
 function clinicalBack(pathname: string): string {
-  const m = pathname.match(/^\/clinical\/patient\/([^/]+)\/intervention/)
-  if (m) return `/clinical/patient/${m[1]}`
-  if (pathname.startsWith('/clinical/patient/')) return '/clinical/cohort'
-  if (pathname.startsWith('/clinical/intervention/')) return '/clinical/cohort'
+  const action = pathname.match(/^(\/clinical\/patient\/[^/]+\/submission\/[^/]+)\/action/)
+  if (action) return action[1]
+  const sub = pathname.match(/^(\/clinical\/patient\/[^/]+)\/.+/)
+  if (sub) return sub[1]
   return '/clinical/cohort'
 }
 

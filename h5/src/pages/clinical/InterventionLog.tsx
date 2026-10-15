@@ -3,34 +3,45 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import { ClinicalLayout } from '../../components/layout'
 import { Icon } from '../../components/ui'
-import { MOCK_PATIENTS, type InterventionType } from '../../data/mock'
+import { useStudy } from '../../study/useStudy'
+import { useL } from '../../study/useL'
+import { opErrorText } from '../../study/uiText'
+import { fmtTime } from '../../study/logic'
+import type { AlertActionType } from '../../study/types'
 
+/** Records how a nurse responded to a symptom alert; response time = handledAt − completedAt. */
 export default function InterventionLog() {
-  const { tr, locale, logIntervention } = useApp()
-  const { id } = useParams()
+  const { tr, locale } = useApp()
+  const { data, mutate } = useStudy()
+  const L = useL()
+  const { id, sid } = useParams()
   const navigate = useNavigate()
-  const patient = MOCK_PATIENTS.find(p => p.id === id) ?? MOCK_PATIENTS[0]
-  const displayName = locale === 'zh' ? patient.alias : patient.aliasEn
+  const sub = data?.submissions.find(s => s.id === sid)
 
-  const [type, setType] = useState<InterventionType>('teleConsult')
+  const [type, setType] = useState<AlertActionType>('teleConsult')
   const [notes, setNotes] = useState('')
   const [followUp, setFollowUp] = useState(true)
+  const [error, setError] = useState('')
 
-  const types: { id: InterventionType; label: string; icon: string }[] = [
-    { id: 'teleConsult', label: tr.teleConsult, icon: 'videocam' },
-    { id: 'pathwayUpdate', label: tr.pathwayUpdate, icon: 'route' },
-    { id: 'medicationAdjust', label: tr.medicationAdjust, icon: 'medication' },
+  const types: { id: AlertActionType; label: string; icon: string }[] = [
+    { id: 'teleConsult', label: L('电话/视频随访', 'Phone/video follow-up'), icon: 'call' },
+    { id: 'adviceOnly', label: L('健康指导', 'Self-care advice'), icon: 'menu_book' },
+    { id: 'medicationAdjust', label: L('通知医生调整用药', 'Doctor adjusted medication'), icon: 'medication' },
+    { id: 'pathwayUpdate', label: L('建议返院/就医', 'Advised to return / seek care'), icon: 'local_hospital' },
   ]
 
-  const handleSubmit = () => {
-    logIntervention(patient.id, displayName, type, notes, followUp)
-    navigate('/clinical/intervention/success', { state: { patientId: patient.id } })
+  const handleSubmit = async () => {
+    const res = await mutate('alertAction', { submissionId: sid, type, notes, followUp })
+    if (res.ok) navigate('/clinical/intervention/success', { state: { patientId: id } })
+    else setError(opErrorText(res.error, L))
   }
 
   return (
     <ClinicalLayout>
-      <h1 className="text-xl font-bold text-on-surface mb-1">{tr.interventionTitle}</h1>
-      <p className="text-sm text-on-surface-variant mb-6">{displayName} · {patient.id}</p>
+      <h1 className="text-xl font-bold text-on-surface mb-1">{L('预警处置记录', 'Alert response')}</h1>
+      <p className="text-sm text-on-surface-variant mb-6">
+        {id} · {sub ? `${sub.visitLabel} · ${L('预警触发', 'alert at')} ${fmtTime(sub.completedAt, locale)}` : ''}
+      </p>
 
       <div className="bg-white rounded-xl p-5 border border-surface-variant flex flex-col gap-5 mb-6">
         <div>
@@ -75,6 +86,7 @@ export default function InterventionLog() {
         </button>
       </div>
 
+      {error && <p className="text-error text-sm mb-3">{error}</p>}
       <button
         type="button"
         onClick={handleSubmit}

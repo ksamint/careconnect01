@@ -49,6 +49,17 @@ export default function AdminHub() {
         ))}
       </div>
 
+      <GlassCard onClick={() => navigate('/admin/study')} className="p-4 flex items-center gap-4 rounded-2xl mb-3 border border-secondary/15">
+        <div className="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center">
+          <Icon name="tune" className="text-secondary text-2xl" />
+        </div>
+        <div className="flex-1">
+          <span className="font-semibold text-on-surface block">{locale === 'zh' ? '研究设置与入组开关' : 'Study settings & enrolment'}</span>
+          <span className="text-xs text-on-surface-variant">{locale === 'zh' ? '伦理/同意书/量表版本、合规清单、备份' : 'Ethics, consent, instrument version, checklist, backup'}</span>
+        </div>
+        <Icon name="chevron_right" className="text-outline" />
+      </GlassCard>
+
       <GlassCard onClick={() => navigate('/admin/users')} className="p-4 flex items-center gap-4 rounded-2xl mb-8 border border-secondary/15">
         <div className="w-11 h-11 rounded-xl bg-secondary/10 flex items-center justify-center">
           <Icon name="manage_accounts" className="text-secondary text-2xl" />

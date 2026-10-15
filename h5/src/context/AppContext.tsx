@@ -1,12 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
 import { type Locale, t } from '../i18n'
-import {
-  type InterventionType,
-  type InterventionRecord,
-  type AppNotification,
-  DEFAULT_NOTIFICATIONS,
-  avgScore,
-} from '../data/mock'
+import { type AppNotification, DEFAULT_NOTIFICATIONS } from '../data/mock'
+import { setUnauthorizedHandler } from '../api/client'
 import {
   type AuthSession,
   type AuthUser,
@@ -21,21 +16,10 @@ import {
 const APP_STORAGE_KEY = 'careconnect_app_state'
 const TASK_WISDOM_ARTICLE_ID = '1'
 
-export interface AssessmentRecord {
-  date: string
-  scores: Record<string, number>
-  avg: number
-}
-
 interface AppState {
   locale: Locale
-  assessmentDone: boolean
   readArticles: string[]
-  streak: number
-  lastScores: Record<string, number>
-  assessmentHistory: AssessmentRecord[]
   notifications: AppNotification[]
-  interventions: InterventionRecord[]
   privacyMode: boolean
 }
 
@@ -51,25 +35,19 @@ interface AppContextValue extends AppState {
   login: (username: string, password: string) => Promise<{ ok: boolean; error?: string }>
   logout: () => Promise<void>
   resetUserPassword: (username: string, newPassword: string) => Promise<{ ok: boolean; error?: string }>
-  listManagedUsers: () => AuthUser[]
+  listManagedUsers: () => Promise<AuthUser[]>
+  verifyPassword: (password: string) => Promise<boolean>
   canAccess: (portal: Portal) => boolean
-  completeAssessment: (scores: Record<string, number>) => void
   markArticleRead: (id: string) => void
   markNotificationRead: (id: string) => void
   markAllNotificationsRead: () => void
-  logIntervention: (patientId: string, patientAlias: string, type: InterventionType, notes: string, followUp: boolean) => InterventionRecord
   togglePrivacyMode: () => void
 }
 
 const defaultState: AppState = {
   locale: 'zh',
-  assessmentDone: false,
   readArticles: [],
-  streak: 12,
-  lastScores: {},
-  assessmentHistory: [],
   notifications: DEFAULT_NOTIFICATIONS,
-  interventions: [],
   privacyMode: true,
 }
 
@@ -79,11 +57,9 @@ function loadAppState(): AppState {
     if (raw) {
       const parsed = JSON.parse(raw)
       return {
-        ...defaultState,
-        ...parsed,
+        locale: parsed.locale ?? defaultState.locale,
+        privacyMode: parsed.privacyMode ?? defaultState.privacyMode,
         notifications: parsed.notifications ?? DEFAULT_NOTIFICATIONS,
-        interventions: parsed.interventions ?? [],
-        assessmentHistory: parsed.assessmentHistory ?? [],
         readArticles: parsed.readArticles ?? [],
       }
     }
@@ -102,6 +78,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(() => syncSessionFromProvider())
 
   useEffect(() => { saveAppState(state) }, [state])
+  useEffect(() => {
+    // Server rejected our token (expired or password reset): drop the session and go to login.
+    setUnauthorizedHandler(() => {
+      getAuthProvider().clear()
+      setSession(null)
+    })
+    return () => setUnauthorizedHandler(null)
+  }, [])
   useEffect(() => {
     document.documentElement.lang = state.locale === 'zh' ? 'zh-CN' : 'en'
   }, [state.locale])
@@ -133,30 +117,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return getAuthProvider().resetPassword(user, username, newPassword)
   }, [user])
 
-  const listManagedUsers = useCallback(() => {
+  const listManagedUsers = useCallback(async () => {
     if (!user) return []
-    return getAuthProvider().listManagedUsers(user)
+    return getAuthProvider().listManagedUsers()
   }, [user])
+
+  const verifyPassword = useCallback((password: string) => getAuthProvider().verifyPassword(password), [])
 
   const canAccess = useCallback((portal: Portal) => {
     if (!user) return false
     return canAccessPortal(user, portal)
   }, [user])
-
-  const completeAssessment = useCallback((scores: Record<string, number>) => {
-    const record: AssessmentRecord = {
-      date: new Date().toISOString(),
-      scores,
-      avg: avgScore(scores),
-    }
-    setState(s => ({
-      ...s,
-      assessmentDone: true,
-      lastScores: scores,
-      streak: s.assessmentDone ? s.streak : s.streak + 1,
-      assessmentHistory: [record, ...s.assessmentHistory].slice(0, 10),
-    }))
-  }, [])
 
   const markArticleRead = useCallback((id: string) => {
     setState(s => ({
@@ -177,26 +148,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ...s,
       notifications: s.notifications.map(n => ({ ...n, read: true })),
     }))
-  }, [])
-
-  const logIntervention = useCallback((
-    patientId: string,
-    patientAlias: string,
-    type: InterventionType,
-    notes: string,
-    followUp: boolean,
-  ): InterventionRecord => {
-    const record: InterventionRecord = {
-      id: `INT-${Date.now()}`,
-      patientId,
-      patientAlias,
-      type,
-      notes,
-      followUp,
-      timestamp: new Date().toISOString(),
-    }
-    setState(s => ({ ...s, interventions: [record, ...s.interventions] }))
-    return record
   }, [])
 
   const togglePrivacyMode = useCallback(() => {
@@ -223,12 +174,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         logout,
         resetUserPassword,
         listManagedUsers,
+        verifyPassword,
         canAccess,
-        completeAssessment,
         markArticleRead,
         markNotificationRead,
         markAllNotificationsRead,
-        logIntervention,
         togglePrivacyMode,
       }}
     >
@@ -244,3 +194,4 @@ export function useApp() {
 }
 
 export { homePathForUser, isAdmin }
+export type { AuthUser }

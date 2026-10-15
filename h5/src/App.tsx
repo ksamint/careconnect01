@@ -5,6 +5,12 @@ import type { Portal } from './auth'
 import Login from './pages/Login'
 import AdminHub from './pages/admin/AdminHub'
 import UserManagement from './pages/admin/UserManagement'
+import StudySettings from './pages/admin/StudySettings'
+import { StudyProvider } from './study/StudyProvider'
+import ParticipantForm from './pages/clinical/ParticipantForm'
+import DataEntry from './pages/clinical/DataEntry'
+import FillOnDevice from './pages/clinical/FillOnDevice'
+import SubmissionDetail from './pages/clinical/SubmissionDetail'
 import PatientHome from './pages/patient/Home'
 import Assessment from './pages/patient/Assessment'
 import AssessmentSuccess from './pages/patient/AssessmentSuccess'
@@ -52,6 +58,7 @@ function AppRoutes() {
 
       <Route path="/admin" element={<RequireAuth><RequireAdmin><AdminHub /></RequireAdmin></RequireAuth>} />
       <Route path="/admin/users" element={<RequireAuth><RequireAdmin><UserManagement /></RequireAdmin></RequireAuth>} />
+      <Route path="/admin/study" element={<RequireAuth><RequireAdmin><StudySettings /></RequireAdmin></RequireAuth>} />
 
       <Route path="/patient/home" element={<RequireAuth><RequirePortal portal="patient"><PatientHome /></RequirePortal></RequireAuth>} />
       <Route path="/patient/assessment" element={<RequireAuth><RequirePortal portal="patient"><Assessment /></RequirePortal></RequireAuth>} />
@@ -63,7 +70,12 @@ function AppRoutes() {
 
       <Route path="/clinical/cohort" element={<RequireAuth><RequirePortal portal="clinical"><CohortDashboard /></RequirePortal></RequireAuth>} />
       <Route path="/clinical/patient/:id" element={<RequireAuth><RequirePortal portal="clinical"><PatientProfile /></RequirePortal></RequireAuth>} />
-      <Route path="/clinical/patient/:id/intervention" element={<RequireAuth><RequirePortal portal="clinical"><InterventionLog /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/enroll" element={<RequireAuth><RequirePortal portal="clinical"><ParticipantForm /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/patient/:id/crf" element={<RequireAuth><RequirePortal portal="clinical"><ParticipantForm /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/patient/:id/entry" element={<RequireAuth><RequirePortal portal="clinical"><DataEntry /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/patient/:id/fill" element={<RequireAuth><RequirePortal portal="clinical"><FillOnDevice /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/patient/:id/submission/:sid" element={<RequireAuth><RequirePortal portal="clinical"><SubmissionDetail /></RequirePortal></RequireAuth>} />
+      <Route path="/clinical/patient/:id/submission/:sid/action" element={<RequireAuth><RequirePortal portal="clinical"><InterventionLog /></RequirePortal></RequireAuth>} />
       <Route path="/clinical/intervention/success" element={<RequireAuth><RequirePortal portal="clinical"><InterventionSuccess /></RequirePortal></RequireAuth>} />
 
       <Route path="/research/analytics" element={<RequireAuth><RequirePortal portal="research"><Analytics /></RequirePortal></RequireAuth>} />
@@ -74,12 +86,20 @@ function AppRoutes() {
   )
 }
 
+function StudyGate({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useApp()
+  // Remount per user so one account never sees another's cached data.
+  return <StudyProvider key={user?.username ?? 'anon'} enabled={isAuthenticated}>{children}</StudyProvider>
+}
+
 export default function App() {
   return (
     <AppProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <StudyGate>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </StudyGate>
     </AppProvider>
   )
 }

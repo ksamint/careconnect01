@@ -1,71 +1,3 @@
-export type UserRole = 'patient' | 'clinical' | 'research'
-export type RiskLevel = 'critical' | 'elevated' | 'stable'
-export type InterventionType = 'teleConsult' | 'pathwayUpdate' | 'medicationAdjust'
-
-export interface MdasiSymptom {
-  id: string
-  icon: string
-}
-
-export const MDASI_SYMPTOMS: MdasiSymptom[] = [
-  { id: 'pain', icon: 'healing' },
-  { id: 'fatigue', icon: 'battery_alert' },
-  { id: 'nausea', icon: 'sick' },
-  { id: 'sleep', icon: 'bedtime' },
-  { id: 'distress', icon: 'psychology' },
-  { id: 'breath', icon: 'air' },
-  { id: 'memory', icon: 'neurology' },
-  { id: 'appetite', icon: 'restaurant' },
-  { id: 'drowsiness', icon: 'snooze' },
-  { id: 'dryMouth', icon: 'water_drop' },
-]
-
-export interface PatientRecord {
-  id: string
-  alias: string
-  aliasEn: string
-  risk: RiskLevel
-  lastScore: number
-  lastAssessment: string
-  lastAssessmentEn: string
-  regimen: string
-  trend: number[]
-  symptoms: Record<string, number>
-}
-
-export const MOCK_PATIENTS: PatientRecord[] = [
-  {
-    id: 'P-001', alias: '患者 A', aliasEn: 'Patient A', risk: 'critical', lastScore: 8.2,
-    lastAssessment: '2 小时前', lastAssessmentEn: '2h ago', regimen: 'FOLFOX',
-    trend: [4, 5, 6, 7, 8, 8, 8.2],
-    symptoms: { pain: 9, fatigue: 8, nausea: 7, sleep: 6, distress: 5, breath: 4, memory: 3, appetite: 6, drowsiness: 7, dryMouth: 5 },
-  },
-  {
-    id: 'P-002', alias: '患者 B', aliasEn: 'Patient B', risk: 'elevated', lastScore: 5.4,
-    lastAssessment: '5 小时前', lastAssessmentEn: '5h ago', regimen: 'AC-T',
-    trend: [3, 3, 4, 4, 5, 5, 5.4],
-    symptoms: { pain: 4, fatigue: 6, nausea: 5, sleep: 5, distress: 4, breath: 3, memory: 4, appetite: 5, drowsiness: 6, dryMouth: 4 },
-  },
-  {
-    id: 'P-003', alias: '患者 C', aliasEn: 'Patient C', risk: 'stable', lastScore: 2.1,
-    lastAssessment: '1 天前', lastAssessmentEn: '1d ago', regimen: 'FOLFOX',
-    trend: [2, 2, 3, 2, 2, 2, 2.1],
-    symptoms: { pain: 2, fatigue: 3, nausea: 1, sleep: 2, distress: 2, breath: 1, memory: 2, appetite: 2, drowsiness: 3, dryMouth: 2 },
-  },
-  {
-    id: 'P-004', alias: '患者 D', aliasEn: 'Patient D', risk: 'elevated', lastScore: 6.0,
-    lastAssessment: '3 小时前', lastAssessmentEn: '3h ago', regimen: 'Paclitaxel',
-    trend: [4, 4, 5, 5, 6, 6, 6],
-    symptoms: { pain: 5, fatigue: 7, nausea: 4, sleep: 5, distress: 4, breath: 3, memory: 5, appetite: 4, drowsiness: 5, dryMouth: 3 },
-  },
-  {
-    id: 'P-005', alias: '患者 E', aliasEn: 'Patient E', risk: 'stable', lastScore: 1.8,
-    lastAssessment: '6 小时前', lastAssessmentEn: '6h ago', regimen: 'AC-T',
-    trend: [2, 1, 2, 1, 2, 2, 1.8],
-    symptoms: { pain: 1, fatigue: 2, nausea: 1, sleep: 2, distress: 1, breath: 1, memory: 2, appetite: 2, drowsiness: 2, dryMouth: 1 },
-  },
-]
-
 export interface WisdomArticle {
   id: string
   icon: string
@@ -201,16 +133,6 @@ export const DEFAULT_NOTIFICATIONS: AppNotification[] = [
   },
 ]
 
-export interface InterventionRecord {
-  id: string
-  patientId: string
-  patientAlias: string
-  type: InterventionType
-  notes: string
-  followUp: boolean
-  timestamp: string
-}
-
 export function getCalmColor(score: number): string {
   if (score <= 3) return 'var(--color-calm-0)'
   if (score <= 6) return 'var(--color-calm-6)'
@@ -221,27 +143,4 @@ export function getOrbColor(score: number): string {
   if (score <= 3) return 'var(--color-orb-0)'
   if (score <= 6) return 'var(--color-orb-6)'
   return 'var(--color-orb-10)'
-}
-
-export function avgScore(scores: Record<string, number>): number {
-  const vals = Object.values(scores)
-  if (!vals.length) return 0
-  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10
-}
-
-export function highestSymptom(scores: Record<string, number>): string {
-  let max = -1
-  let id = 'pain'
-  for (const [k, v] of Object.entries(scores)) {
-    if (v > max) { max = v; id = k }
-  }
-  return id
-}
-
-export function buildExportCsv(): string {
-  const header = 'patient_id,alias,risk,last_score,regimen,compliance_pct\n'
-  const rows = MOCK_PATIENTS.map(p =>
-    `${p.id},${p.aliasEn},${p.risk},${p.lastScore},${p.regimen},${Math.round(85 + Math.random() * 10)}`
-  ).join('\n')
-  return header + rows
 }

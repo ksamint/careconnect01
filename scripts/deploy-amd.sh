@@ -4,12 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> Building H5 assets..."
-cd h5
-npm install --no-audit --no-fund
-npm run build
-cd "$ROOT"
-
+# The H5 app is built inside the Docker image; the SQLite database lives in the careconnect-data volume.
 echo "==> Building Docker image (linux/amd64)..."
 DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose build
 
@@ -23,5 +18,5 @@ if [[ -f .env ]]; then
   PORT="${HOST_PORT:-8080}"
 fi
 
-echo "==> CareConnect H5 is running at http://localhost:${PORT}/login"
+echo "==> CareConnect is running at http://localhost:${PORT}/login"
 docker compose ps

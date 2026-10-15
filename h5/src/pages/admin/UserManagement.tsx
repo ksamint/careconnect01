@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useApp, isAdmin } from '../../context/AppContext'
+import { useEffect, useState } from 'react'
+import { useApp, isAdmin, type AuthUser } from '../../context/AppContext'
 import { Icon, GlassCard } from '../../components/ui'
 import { SubPageHeader, PrimaryButton, LangButton } from '../../components/layout/navigation'
 
@@ -9,10 +9,15 @@ export default function UserManagement() {
   const [newPassword, setNewPassword] = useState('')
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [saving, setSaving] = useState(false)
+  const [allUsers, setAllUsers] = useState<AuthUser[]>([])
+
+  useEffect(() => {
+    listManagedUsers().then(setAllUsers)
+  }, [listManagedUsers])
 
   if (!user || !isAdmin(user.role)) return null
 
-  const users = listManagedUsers().filter(u => u.username !== user.username)
+  const users = allUsers.filter(u => u.username !== user.username)
 
   const roleLabel = (role: string) => {
     if (role === 'system_admin') return tr.systemAdmin
