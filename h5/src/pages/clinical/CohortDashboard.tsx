@@ -6,7 +6,7 @@ import { useL } from '../../study/useL'
 import { ClinicalLayout } from '../../components/layout'
 import { Icon, RiskBadge } from '../../components/ui'
 import { SyncBanner, VisitStatusPill } from '../../components/study'
-import { allVisitStates, latestSubmission, currentResponses, alertLevel, latestCycle, VISITS, visitState } from '../../study/logic'
+import { allVisitStates, latestSubmission, currentResponses, alertLevel, VISITS, visitState } from '../../study/logic'
 import type { Participant, StudyData } from '../../study/types'
 
 type Filter = 'all' | 'today' | 'alerts' | 'verify'
@@ -33,7 +33,7 @@ export default function CohortDashboard() {
   const { data } = useStudy()
   const L = useL()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState<Filter>('today')
+  const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
 
   const handleLogout = async () => {
@@ -110,7 +110,7 @@ export default function CohortDashboard() {
       <div className="flex flex-col gap-3 mb-6">
         {filtered.length === 0 && <p className="text-center text-on-surface-variant py-8 text-sm">{L('没有符合条件的患者', 'No matching patients')}</p>}
         {filtered.map(({ p, s }) => {
-          const cycle = latestCycle(p)
+          const visits = allVisitStates(data, p)
           return (
             <button key={p.id} type="button" onClick={() => navigate(`/clinical/patient/${p.id}`)} className="bg-white rounded-2xl p-4 border border-surface-variant shadow-sm text-left flex items-center gap-3 active:scale-[0.99]">
               <div className={`w-1.5 self-stretch rounded-full shrink-0 ${s.level === 'high' ? 'bg-risk-critical' : s.level === 'medium' ? 'bg-risk-elevated' : 'bg-risk-stable'}`} />
@@ -122,15 +122,18 @@ export default function CohortDashboard() {
                   <RiskBadge level={riskOf[s.level]} />
                   {s.unhandled && <span className="text-[11px] text-risk-critical font-semibold">{L('未处置', 'open')}</span>}
                 </div>
-                {cycle && (
-                  <div className="flex items-center gap-1.5 flex-wrap text-xs text-on-surface-variant">
-                    <span>{L(`第${cycle.cycleNo}周期`, `C${cycle.cycleNo}`)}</span>
+                <p className="text-sm font-semibold text-secondary mb-2">
+                  {visits.length ? L(`累计已提交 ${visits.filter(v => v.status === 'done').length}/${visits.length}`, `Total submitted ${visits.filter(v => v.status === 'done').length}/${visits.length}`) : L('待安排评估日期', 'Awaiting assessment dates')}
+                </p>
+                {[...p.cycles].sort((a, b) => a.cycleNo - b.cycleNo).map(cycle => (
+                  <div key={cycle.cycleNo} className="flex items-center gap-1.5 flex-wrap text-xs text-on-surface-variant">
+                    <span>{L(`第${cycle.cycleNo}周期 · 已提交 ${visits.filter(v => v.cycle.cycleNo === cycle.cycleNo && v.status === 'done').length}/3`, `C${cycle.cycleNo} · Submitted ${visits.filter(v => v.cycle.cycleNo === cycle.cycleNo && v.status === 'done').length}/3`)}</span>
                     {VISITS.map(v => {
                       const st = visitState(data, p, cycle, v.label)
                       return <span key={v.label} className="flex items-center gap-1">{v.label}<VisitStatusPill status={st.status} /></span>
                     })}
                   </div>
-                )}
+                ))}
                 {s.toVerify > 0 && <p className="text-xs text-risk-elevated mt-1">{L(`${s.toVerify} 份纸质/电话录入待核对`, `${s.toVerify} paper/phone entr(ies) to verify`)}</p>}
               </div>
               <Icon name="chevron_right" className="text-outline shrink-0" />

@@ -207,7 +207,7 @@ export function Card({ title, children, action }: { title?: string; children: Re
 export function VisitStatusPill({ status }: { status: VisitStatus }) {
   const L = useL()
   const map: Record<VisitStatus, [string, string]> = {
-    done: ['bg-green-50 text-risk-stable border-green-200', L('已完成', 'Done')],
+    done: ['bg-green-50 text-risk-stable border-green-200', L('已提交', 'Submitted')],
     due: ['bg-blue-50 text-secondary border-blue-200', L('今日应填', 'Due')],
     overdue: ['bg-orange-50 text-risk-elevated border-orange-200', L('已超窗', 'Overdue')],
     upcoming: ['bg-surface-container text-outline border-surface-variant', L('未到期', 'Upcoming')],

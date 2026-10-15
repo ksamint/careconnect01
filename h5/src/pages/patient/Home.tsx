@@ -2,11 +2,11 @@ import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
 import { PatientHeader, PatientLayout } from '../../components/layout'
 import { GlassCard, Icon } from '../../components/ui'
-import { SyncBanner } from '../../components/study'
+import { SyncBanner, VisitStatusPill } from '../../components/study'
 import { useStudy } from '../../study/useStudy'
 import { useL } from '../../study/useL'
 import { usePatientRecord } from '../../study/usePatientRecord'
-import { pendingVisit, nextUpcoming, latestCycle, daysBetween, studyDate } from '../../study/logic'
+import { pendingVisit, nextUpcoming, latestCycle, daysBetween, studyDate, allVisitStates, countMissing, currentResponses } from '../../study/logic'
 
 export default function PatientHome() {
   const { tr, locale, user, wisdomRead } = useApp()
@@ -18,11 +18,14 @@ export default function PatientHome() {
   const next = data && participant ? nextUpcoming(data, participant) : undefined
   const cycle = participant ? latestCycle(participant) : undefined
   const dayNo = cycle ? daysBetween(cycle.infusionDate, studyDate()) : null
-  const doneCount = data && participant ? data.submissions.filter(s => s.participantId === participant.id).length : 0
-  const totalVisits = participant ? participant.cycles.length * 3 : 0
+  const visits = data && participant ? allVisitStates(data, participant) : []
+  const doneCount = visits.filter(v => v.status === 'done').length
+  const totalVisits = visits.length
   const patientName = user
     ? (locale === 'zh' ? user.displayNameZh : user.displayNameEn)
     : (locale === 'zh' ? '小康' : 'Alex')
+
+  if (!data) return <><PatientHeader /><PatientLayout><SyncBanner /><p className="text-center py-8">{L('加载中…', 'Loading…')}</p></PatientLayout></>
 
   return (
     <>
@@ -59,13 +62,37 @@ export default function PatientHome() {
               </div>
               <div className="flex items-center gap-6 relative z-10">
                 <div className="flex flex-col items-center">
-                  <span className="text-3xl font-light text-primary">{doneCount}/{totalVisits}</span>
-                  <span className="text-xs text-outline">{L('已完成问卷', 'Questionnaires done')}</span>
+                  <span className="text-3xl font-light text-primary">{totalVisits ? `${doneCount}/${totalVisits}` : '—'}</span>
+                  <span className="text-xs text-outline">{totalVisits ? L('累计已提交问卷', 'Total questionnaires submitted') : L('待安排评估日期', 'Awaiting assessment dates')}</span>
                 </div>
                 <div className="flex-1 h-2 bg-surface-variant/60 rounded-full overflow-hidden">
                   <div className="h-full bg-secondary rounded-full" style={{ width: `${totalVisits ? (doneCount / totalVisits) * 100 : 0}%` }} />
                 </div>
               </div>
+              <p className="mt-4 text-sm text-on-surface-variant">{L('每个治疗周期填写3次：T0、T1、T2。', 'Three assessments per treatment cycle: T0, T1 and T2.')}</p>
+              {[...(participant?.cycles ?? [])].sort((a, b) => a.cycleNo - b.cycleNo).map(c => {
+                const cycleVisits = visits.filter(v => v.cycle.cycleNo === c.cycleNo)
+                const submitted = cycleVisits.filter(v => v.status === 'done').length
+                return (
+                  <div key={c.cycleNo} className="mt-4 border-t border-outline-variant/40 pt-4" data-testid={`cycle-progress-${c.cycleNo}`}>
+                    <p className={`text-sm font-semibold mb-3 ${submitted === cycleVisits.length ? 'text-primary' : 'text-on-surface'}`}>
+                      {L(`第${c.cycleNo}周期 · 已提交 ${submitted}/${cycleVisits.length}`, `Cycle ${c.cycleNo} · Submitted ${submitted}/${cycleVisits.length}`)}
+                      {submitted === cycleVisits.length && L(' · 已全部提交', ' · All submitted')}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {cycleVisits.map(v => {
+                        const missing = v.submission && data ? countMissing(currentResponses(data, v.submission)) : 0
+                        return <div key={v.def.label} className="flex flex-col items-start gap-1.5 text-xs">
+                          <span className="font-semibold">{v.def.label}</span>
+                          <VisitStatusPill status={v.status} />
+                          <span className="text-outline">{v.scheduled}</span>
+                          {missing > 0 && <span className="text-risk-elevated">{L(`缺${missing}题`, `${missing} unanswered`)}</span>}
+                        </div>
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
             </GlassCard>
           </section>
 
@@ -96,7 +123,7 @@ export default function PatientHome() {
                     <span className="text-lg font-medium">{L('今日无待填问卷', 'No questionnaire due today')}</span>
                     <span className="text-[13px] text-primary flex items-center gap-1.5 mt-1">
                       <Icon name="check_circle" className="text-[14px]" />
-                      {next ? L(`下一次 ${next.def.label}：${next.scheduled}`, `Next ${next.def.label}: ${next.scheduled}`) : tr.taskWisdomDone}
+                      {next ? L(`下一次 ${next.def.label}：${next.scheduled}`, `Next ${next.def.label}: ${next.scheduled}`) : !totalVisits ? L('等待护士安排评估日期', 'Waiting for your nurse to assign dates') : visits.some(v => v.status === 'missed') ? L('有缺失评估，请联系护士', 'Some assessments are missing. Contact your nurse.') : L('目前无待填评估', 'No pending assessments right now')}
                     </span>
                   </div>
                 </GlassCard>

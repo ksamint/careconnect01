@@ -95,6 +95,9 @@ export default function PatientProfile() {
           </div>
         )}
         {msg && <p className="mt-2 text-sm text-on-surface-variant">{msg}</p>}
+        <p className="mt-3 text-sm font-semibold text-secondary">
+          {visits.length ? L(`累计已提交 ${visits.filter(v => v.status === 'done').length}/${visits.length}`, `Total submitted ${visits.filter(v => v.status === 'done').length}/${visits.length}`) : L('待安排评估日期', 'Awaiting assessment dates')}
+        </p>
       </div>
 
       {[...p.cycles].sort((a, b) => b.cycleNo - a.cycleNo).map(cycle => {
@@ -106,6 +109,7 @@ export default function PatientProfile() {
             action={<button type="button" onClick={() => navigate(`${base}/crf#cycles`)} className="text-xs text-secondary font-semibold">{L('结局', 'Outcome')}</button>}
           >
             <div className="flex flex-col gap-3">
+              <p className="text-sm font-semibold text-primary">{L(`已提交 ${visits.filter(v => v.cycle.cycleNo === cycle.cycleNo && v.status === 'done').length}/3 · 每周期3次`, `Submitted ${visits.filter(v => v.cycle.cycleNo === cycle.cycleNo && v.status === 'done').length}/3 · Three per cycle`)}</p>
               {visits.filter(v => v.cycle.cycleNo === cycle.cycleNo).map(v => {
                 const sub = v.submission
                 const resp = sub ? currentResponses(data, sub) : null
