@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useApp, homePathForUser } from '../../context/AppContext'
 import { api, ApiError } from '../../api/client'
 import { useL } from '../../study/useL'
-import { GlassCard, Icon } from '../../components/ui'
+import { DateTimeInput, GlassCard, Icon } from '../../components/ui'
 import { LangButton, PrimaryButton } from '../../components/layout/navigation'
 import { studyDate } from '../../study/logic'
 
@@ -59,7 +59,7 @@ export default function PatientRegister() {
     }
   }
 
-  const inputClass = 'w-full min-h-[52px] min-w-0 px-4 rounded-xl border border-outline-variant bg-white text-base text-on-surface'
+  const inputClass = 'w-full h-[52px] shrink-0 min-w-0 px-4 rounded-xl border border-outline-variant bg-white text-base text-on-surface'
   return (
     <main className="min-h-[100dvh] px-5 py-6 max-w-md mx-auto">
       <div className="flex justify-end mb-6"><LangButton /></div>
@@ -77,7 +77,7 @@ export default function PatientRegister() {
             <input id="patient-name" autoComplete="name" required maxLength={80} value={name} onChange={e => setName(e.target.value)} className={inputClass} />
           </label>
           <label className="text-sm font-medium flex flex-col gap-2" htmlFor="birthday">{L('出生日期', 'Birthday')}
-            <input id="birthday" type="date" autoComplete="bday" required min="1900-01-01" max={studyDate()} value={birthday} onChange={e => setBirthday(e.target.value)} className={inputClass} />
+            <DateTimeInput id="birthday" type="date" autoComplete="bday" required min="1900-01-01" max={studyDate()} value={birthday} onChange={e => setBirthday(e.target.value)} className={inputClass} />
           </label>
           <p className="text-sm text-on-surface-variant">{L('手机号可用于登录，初始密码：', 'Sign in with your phone. Initial password: ')}<strong>kangfu999</strong></p>
           <p className="text-sm text-on-surface-variant">{L('护士安排评估日期后，问卷会显示在您的账号中。', 'Your questionnaire appears after your nurse assigns assessment dates.')}</p>

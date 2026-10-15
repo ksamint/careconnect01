@@ -1,5 +1,10 @@
-import { type ReactNode } from 'react'
+import { type InputHTMLAttributes, type ReactNode } from 'react'
 import { useApp } from '../../context/AppContext'
+
+export function DateTimeInput({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement> & { type: 'date' | 'time' }) {
+  // Keep padding on the wrapper: iOS miscalculates padded date inputs at width 100%.
+  return <div className={`flex items-center ${className}`}><input {...props} className="date-time-input" /></div>
+}
 
 interface GlassCardProps {
   children: ReactNode

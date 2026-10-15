@@ -5,7 +5,7 @@ import { useL } from '../../study/useL'
 import { ITEMS, itemLabel, type Domain, type Responses } from '../../study/instrument'
 import { OPTIONS, type OptionKey } from '../../study/options'
 import type { VisitStatus } from '../../study/logic'
-import { Icon } from '../ui'
+import { DateTimeInput, Icon } from '../ui'
 
 // ---------- 0–10 score picker ----------
 
@@ -155,11 +155,11 @@ export function PasswordDialog({ title, description, onConfirm, onCancel }: Pass
 
 // ---------- form fields ----------
 
-const inputCls = 'w-full h-11 px-3 rounded-lg border border-outline-variant/60 bg-white text-sm'
+const inputCls = 'w-full min-w-0 h-11 px-3 rounded-lg border border-outline-variant/60 bg-white text-sm'
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="min-w-0 flex flex-col gap-1.5">
       <span className="text-xs font-semibold text-on-surface-variant">{label}</span>
       {children}
       {hint && <span className="text-[11px] text-outline">{hint}</span>}
@@ -183,7 +183,9 @@ export function SelectField({ label, optionKey, value, onChange }: { label: stri
 export function TextField({ label, value, onChange, type = 'text', hint, placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; hint?: string; placeholder?: string }) {
   return (
     <Field label={label} hint={hint}>
-      <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className={inputCls} inputMode={type === 'number' ? 'decimal' : undefined} />
+      {type === 'date' || type === 'time'
+        ? <DateTimeInput type={type} value={value} onChange={e => onChange(e.target.value)} className={inputCls} />
+        : <input type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} className={inputCls} inputMode={type === 'number' ? 'decimal' : undefined} />}
     </Field>
   )
 }
