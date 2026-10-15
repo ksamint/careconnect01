@@ -3,18 +3,48 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
     image: careconnect-h5:latest
-    container_name: careconnect-h5
     restart: unless-stopped
     ports:
-      - "${HOST_PORT:-8080}:80"
-    environment:
-      - TZ=Asia/Shanghai
+      - "127.0.0.1:${HOST_PORT:-8080}:80"
+    depends_on:
+      careconnect-api:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/health"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+  careconnect-api:
+    build:
+      context: ./backend
+    image: careconnect-api:latest
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/careconnect.sqlite3
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-https://localhost}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      MATERIALS_PATH: /materials/study.json
+    volumes:
+      - careconnect-data:/data
+      - ./materials:/materials:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+  careconnect-backup:
+    image: careconnect-api:latest
+    restart: unless-stopped
+    depends_on:
+      careconnect-api:
+        condition: service_healthy
+    environment:
+      DB_PATH: /data/careconnect.sqlite3
+    volumes:
+      - careconnect-data:/data
+      - careconnect-backups:/backups
+    command: ["python", "backup.py", "loop", "--directory", "/backups"]
+volumes:
+  careconnect-data:
+  careconnect-backups:

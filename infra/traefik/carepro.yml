@@ -1,0 +1,26 @@
+# Install on host: /data/coolify/proxy/dynamic/carepro.yml
+http:
+  middlewares:
+    carepro-redirect-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  routers:
+    carepro-http:
+      rule: Host(`carepro.opcglobal.cn`) && !PathPrefix(`/.well-known/acme-challenge/`)
+      entryPoints: [http]
+      middlewares: [carepro-redirect-https]
+      service: carepro-web
+    carepro-https:
+      rule: Host(`carepro.opcglobal.cn`)
+      entryPoints: [https]
+      tls:
+        certResolver: letsencrypt
+      service: carepro-web
+
+  services:
+    carepro-web:
+      loadBalancer:
+        servers:
+          - url: http://careconnect-h5:80
