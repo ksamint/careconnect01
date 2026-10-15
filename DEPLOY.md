@@ -51,11 +51,11 @@ Open `http://<server-ip>:8080/login`.
 
 ## Patient registration
 
-Patients open `/patient/assessment` or `/patient/register`, enter a mainland China mobile number, name and birthday, and receive an account automatically. They are signed in after registration; later visits can use the phone number and initial password `kangfu999`. Existing account passwords are unchanged. Duplicate registration never resets an existing account.
+Patients open `/patient/assessment` or `/patient/register`, enter a mainland China mobile number, name and birthday, and receive an account automatically. They are signed in after registration with an HttpOnly, SameSite=Lax cookie (Secure over the production domain), retained for 60 days. The same browser restores the session after reopening; patient Profile has Sign out, which revokes the server session and cookie. Staff sessions remain 12 hours. The browser no longer persists bearer tokens. Later visits can use the phone number and initial password `kangfu999`. Existing account passwords are unchanged. Duplicate registration never resets an existing account.
 
 Identity details are stored separately from pseudonymous research records. Nurses can search by phone/name and view these details; the research API and standard CSV exports exclude them. The phone is a login alias, while submissions retain the generated participant ID.
 
-Real registration follows the existing real-enrollment gate and requires the current consent confirmation. Until approved materials are configured, registration requires explicit fictional-data confirmation and creates synthetic demo records only. Nurses must assign cycle/infusion dates before questionnaires become due; registration does not invent dates.
+Public registration follows the configured real-enrollment flag and requires agreement to use the supplied details; when a consent version is configured, that version must be confirmed. The operator controls when registration is opened. The public form accepts an 11-digit mainland China mobile number and never silently labels registrations synthetic. Nurses must assign cycle/infusion dates before questionnaires become due; registration does not invent dates.
 
 ## HTTPS (needed for WeChat)
 

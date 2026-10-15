@@ -1,18 +1,20 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useApp, homePathForUser } from '../context/AppContext'
 import { getAuthProvider } from '../auth'
 import { Icon, GlassCard } from '../components/ui'
 import { LangButton, PrimaryButton } from '../components/layout/navigation'
 
 export default function Login() {
-  const { tr, login, locale } = useApp()
+  const { tr, login, locale, user } = useApp()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  if (user) return <Navigate to={homePathForUser(user)} replace />
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

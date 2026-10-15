@@ -1,5 +1,5 @@
 import type { AuthProvider, AuthSession, AuthUser, LoginResult } from './types'
-import { api, ApiError, getToken, setToken } from '../api/client'
+import { api, ApiError, setToken } from '../api/client'
 
 const SESSION_KEY = 'careconnect_session'
 
@@ -13,7 +13,7 @@ function persistSession(session: AuthSession | null) {
 function readSession(): AuthSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw || !getToken()) return null
+    if (!raw) return null
     const session = JSON.parse(raw) as AuthSession
     if (session.provider !== 'api' || !session.user?.username) return null
     return session
@@ -27,10 +27,22 @@ class ApiAuthProvider implements AuthProvider {
   readonly name = 'api' as const
   private session: AuthSession | null = readSession()
 
+  async restoreSession(): Promise<AuthSession | null> {
+    try {
+      const { user } = await api<{ user: AuthUser }>('/api/me')
+      setToken(null)
+      this.session = { user, provider: 'api', issuedAt: Date.now() }
+      persistSession(this.session)
+    } catch (err) {
+      if (err instanceof ApiError) this.clear()
+    }
+    return this.session
+  }
+
   async login(username: string, password: string): Promise<LoginResult> {
     try {
-      const { token, user } = await api<{ token: string; user: AuthUser }>('/api/login', { method: 'POST', body: { username, password } })
-      setToken(token)
+      const { user } = await api<{ user: AuthUser }>('/api/login', { method: 'POST', body: { username, password } })
+      setToken(null)
       this.session = { user, provider: 'api', issuedAt: Date.now() }
       persistSession(this.session)
       return { ok: true, session: this.session }
@@ -42,7 +54,7 @@ class ApiAuthProvider implements AuthProvider {
   }
 
   async logout(): Promise<void> {
-    try { await api('/api/logout', { method: 'POST' }) } catch { /* already gone */ }
+    await api('/api/logout', { method: 'POST' })
     this.clear()
   }
 

@@ -33,7 +33,7 @@ export default function PatientRegister() {
     invalid_name: L('请输入姓名，最多80个字。', 'Enter a name, up to 80 characters.'),
     invalid_birthday: L('请输入有效的出生日期。', 'Enter a valid birthday.'),
     registration_unavailable: L('无法重复登记，请用手机号和密码登录，或联系护士核对。', 'Registration is unavailable. Sign in with your phone and password, or contact your nurse.'),
-    real_enrollment_disabled: L('正式入组尚未开放，目前只可使用虚构信息演示。', 'Real enrollment is closed. Use fictional details for demo registration only.'),
+    real_enrollment_disabled: L('登记暂不可用，请联系护士。', 'Registration is temporarily unavailable. Contact your nurse.'),
     registration_rate_limited: L('登记请求较多，请一分钟后重试。', 'Too many registrations. Please try again in one minute.'),
     consent_required: L('请先完成当前版本的知情同意。', 'Complete the current consent process first.'),
     network: L('暂时无法连接，请刷新重试。', 'Unable to connect. Refresh and try again.'),
@@ -46,7 +46,7 @@ export default function PatientRegister() {
     setError('')
     try {
       const account = await api<{ username: string; password: string }>('/api/patient-registration', {
-        method: 'POST', body: { phone, name, birthday, synthetic: !settings.realEnrollmentEnabled, consentConfirmed: confirmed, consentVersion: settings.consentVersion },
+        method: 'POST', body: { phone, name, birthday, synthetic: false, consentConfirmed: confirmed, consentVersion: settings.consentVersion },
       })
       setCreated(true)
       const result = await login(account.username, account.password)
@@ -68,11 +68,10 @@ export default function PatientRegister() {
         <h1 className="text-2xl font-bold text-on-surface mt-3">{L('患者登记', 'Patient registration')}</h1>
         <p className="text-sm text-on-surface-variant mt-2">{L('填写以下信息，自动创建您的个人账号。', 'Enter your details to create your personal account.')}</p>
       </div>
-      {settings && !settings.realEnrollmentEnabled && <p role="note" className="mb-4 p-4 rounded-xl bg-secondary/10 text-secondary text-sm">{L('演示模式：正式入组尚未开放，请仅填写虚构手机号、姓名和出生日期。', 'Demo mode: real enrollment is closed. Enter fictional phone, name and birthday only.')}</p>}
       <GlassCard className="p-5">
         <form onSubmit={submit} className="flex flex-col gap-4">
           <label className="text-sm font-medium flex flex-col gap-2" htmlFor="phone">{L('手机号', 'Mobile phone')}
-            <input id="phone" type="tel" inputMode="tel" autoComplete="tel" required maxLength={20} value={phone} onChange={e => setPhone(e.target.value)} placeholder={L('中国大陆手机号（可加 +86）', 'Mainland China mobile (+86 optional)')} className={inputClass} />
+            <input id="phone" type="tel" inputMode="numeric" autoComplete="tel-national" required pattern="1[3-9][0-9]{9}" minLength={11} maxLength={11} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder={L('请输入11位中国大陆手机号', 'Enter an 11-digit China mobile number')} className={inputClass} />
           </label>
           <label className="text-sm font-medium flex flex-col gap-2" htmlFor="patient-name">{L('姓名', 'Name')}
             <input id="patient-name" autoComplete="name" required maxLength={80} value={name} onChange={e => setName(e.target.value)} className={inputClass} />
@@ -82,11 +81,12 @@ export default function PatientRegister() {
           </label>
           <p className="text-sm text-on-surface-variant">{L('手机号可用于登录，初始密码：', 'Sign in with your phone. Initial password: ')}<strong>kangfu999</strong></p>
           <p className="text-sm text-on-surface-variant">{L('护士安排评估日期后，问卷会显示在您的账号中。', 'Your questionnaire appears after your nurse assigns assessment dates.')}</p>
+          <p className="text-sm text-on-surface-variant">{L('登录后，本浏览器保留登录状态60天；可在“我的”中退出登录。', 'This browser keeps you signed in for 60 days. Sign out from My profile.')}</p>
           {settings && <label className="flex gap-3 items-start text-sm leading-relaxed">
             <input type="checkbox" required checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1 w-5 h-5 shrink-0" />
-            {settings.realEnrollmentEnabled
+            {settings.consentVersion
               ? L(`我已完成知情同意（版本 ${settings.consentVersion}），同意登记上述信息。`, `I have completed consent (${settings.consentVersion}) and agree to register these details.`)
-              : L('我确认以上均为虚构信息，仅用于演示。', 'I confirm all details are fictional and for demonstration only.')}
+              : L('我同意登记上述信息用于患者账号和评估管理。', 'I agree to register these details for my patient account and assessment management.')}
           </label>}
           {error && <p role="alert" className="text-error text-sm">{messages[error] ?? messages.network}</p>}
           {created && <p role="status" className="text-primary text-sm">{L('账号已创建，请用手机号和初始密码登录，无需重复登记。', 'Account created. Sign in with your phone and initial password; do not register again.')}</p>}

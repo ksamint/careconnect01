@@ -37,6 +37,7 @@ export function setUnauthorizedHandler(fn: (() => void) | null) {
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const token = getToken()
   const res = await fetch(path, {
+    credentials: 'same-origin',
     method: init.method ?? 'GET',
     headers: {
       'Content-Type': 'application/json',

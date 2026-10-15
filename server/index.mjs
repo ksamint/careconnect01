@@ -10,7 +10,8 @@ import { seed } from './seed.mjs'
 const PORT = Number(process.env.PORT || 8787)
 const STATIC_DIR = resolve(process.env.STATIC_DIR || join(process.cwd(), '..', 'h5', 'dist'))
 const STAFF_SESSION_HOURS = 12
-const PATIENT_SESSION_DAYS = 30
+const PATIENT_SESSION_DAYS = 60
+const SESSION_COOKIE = 'careconnect_session'
 
 seed()
 
@@ -31,8 +32,21 @@ function toUser(row) {
   }
 }
 
+function cookieToken(req) {
+  return (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith(SESSION_COOKIE + '='))?.slice(SESSION_COOKIE.length + 1) || ''
+}
+
+function sessionToken(req) {
+  return (req.headers.authorization || '').replace(/^Bearer /, '') || cookieToken(req)
+}
+
+function setSessionCookie(req, res, token, maxAge) {
+  const local = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/.test(req.headers.host || '')
+  res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${local ? '' : '; Secure'}`)
+}
+
 function sessionUser(req) {
-  const token = (req.headers.authorization || '').replace(/^Bearer /, '')
+  const token = sessionToken(req)
   if (!token) return null
   const row = get('SELECT u.* , s.expires_at FROM sessions s JOIN users u ON u.username = s.username WHERE s.token = ?', token)
   if (!row || row.expires_at < new Date().toISOString()) return null
@@ -77,6 +91,17 @@ async function api(req, res, url) {
   const path = url.pathname
   const method = req.method
 
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const origin = req.headers.origin
+    if (req.headers['sec-fetch-site'] === 'cross-site') throw new HttpError(403, 'forbidden')
+    if (origin) {
+      let host
+      try { host = new URL(origin).host } catch { throw new HttpError(403, 'forbidden') }
+      if (host !== req.headers.host) throw new HttpError(403, 'forbidden')
+    }
+    if (req.headers['content-type']?.split(';')[0].trim() !== 'application/json') throw new HttpError(415, 'json_required')
+  }
+
   if (path === '/api/health') return send(res, 200, { ok: true })
 
   if (path === '/api/patient-registration' && method === 'GET') {
@@ -91,12 +116,6 @@ async function api(req, res, url) {
     const limit = registrations.get(key) ?? { count: 0, until: now + 60_000 }
     if (++limit.count > 30) throw new HttpError(429, 'registration_rate_limited')
     registrations.set(key, limit)
-    const origin = req.headers.origin
-    if (origin) {
-      let host
-      try { host = new URL(origin).host } catch { throw new HttpError(403, 'forbidden') }
-      if (host !== req.headers.host) throw new HttpError(403, 'forbidden')
-    }
     return send(res, 201, registerPatient(await readBody(req)))
   }
 
@@ -121,18 +140,26 @@ async function api(req, res, url) {
     const ms = row.portal === 'patient' ? PATIENT_SESSION_DAYS * 86_400_000 : STAFF_SESSION_HOURS * 3_600_000
     run('INSERT INTO sessions (token, username, created_at, expires_at) VALUES (?, ?, ?, ?)', token, row.username, new Date().toISOString(), new Date(Date.now() + ms).toISOString())
     run('DELETE FROM sessions WHERE expires_at < ?', new Date().toISOString())
+    setSessionCookie(req, res, token, ms / 1000)
     return send(res, 200, { token, user: toUser(row) })
   }
 
   if (path === '/api/logout' && method === 'POST') {
-    const token = (req.headers.authorization || '').replace(/^Bearer /, '')
-    if (token) run('DELETE FROM sessions WHERE token = ?', token)
+    for (const token of [sessionToken(req), cookieToken(req)]) if (token) run('DELETE FROM sessions WHERE token = ?', token)
+    setSessionCookie(req, res, '', 0)
     return send(res, 200, { ok: true })
   }
 
   const user = requireUser(req)
 
-  if (path === '/api/me') return send(res, 200, { user })
+  if (path === '/api/me') {
+    // Migrate existing browser bearer sessions into an HttpOnly cookie without extending expiry.
+    if (req.headers.authorization) {
+      const session = get('SELECT expires_at FROM sessions WHERE token = ?', sessionToken(req))
+      setSessionCookie(req, res, sessionToken(req), Math.max(0, Math.floor((Date.parse(session.expires_at) - Date.now()) / 1000)))
+    }
+    return send(res, 200, { user })
+  }
 
   if (path === '/api/verify-password' && method === 'POST') {
     const { password } = await readBody(req)

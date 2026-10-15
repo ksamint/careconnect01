@@ -76,6 +76,15 @@ const AppContext = createContext<AppContextValue | null>(null)
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(loadAppState)
   const [session, setSession] = useState<AuthSession | null>(() => syncSessionFromProvider())
+  const [authReady, setAuthReady] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    getAuthProvider().restoreSession().then(restored => {
+      if (active) { setSession(restored); setAuthReady(true) }
+    })
+    return () => { active = false }
+  }, [])
 
   useEffect(() => { saveAppState(state) }, [state])
   useEffect(() => {
@@ -157,6 +166,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const wisdomRead = state.readArticles.includes(TASK_WISDOM_ARTICLE_ID)
   const unreadCount = state.notifications.filter(n => !n.read).length
   const tr = t(state.locale)
+
+  if (!authReady) return <div className="min-h-[100dvh] flex items-center justify-center">{state.locale === 'zh' ? '加载中…' : 'Loading…'}</div>
 
   return (
     <AppContext.Provider

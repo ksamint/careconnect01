@@ -5,6 +5,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { DatabaseSync } from 'node:sqlite'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const PORT = 18000 + Math.floor(Math.random() * 1000)
@@ -188,6 +189,66 @@ test('registration creates one linked patient, supports phone login, and protect
   await op(nurse, 'updateParticipant', { id: account.participantId, withdraw: true, withdrawReason: 'test' })
   assert.equal((await call('/api/login', { method: 'POST', body: { username: registration.phone, password: 'changed999' } })).status, 403)
   assert.equal((await register(registration)).status, 409, 'withdrawal cannot be bypassed by registering again')
+})
+
+test('patient cookie lasts 60 days, restores without bearer, and logout revokes it', async () => {
+  const response = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'user1', password: '123456a' }) })
+  assert.equal(response.status, 200)
+  const header = response.headers.get('set-cookie')
+  assert.match(header, /HttpOnly/)
+  assert.match(header, /SameSite=Lax/)
+  assert.match(header, /Max-Age=5184000/)
+  const cookie = header.split(';')[0]
+  const session = await response.json()
+  const db = new DatabaseSync(join(dataDir, 'careconnect.db'))
+  const row = db.prepare('SELECT expires_at FROM sessions WHERE token = ?').get(session.token)
+  assert.ok(Math.abs(Date.parse(row.expires_at) - Date.now() - 60 * 86_400_000) < 5000)
+  db.close()
+  const me = await fetch(BASE + '/api/me', { headers: { Cookie: cookie } })
+  assert.equal(me.status, 200)
+  assert.equal((await me.json()).user.username, 'user1')
+  assert.equal((await fetch(BASE + '/api/logout', { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json', Origin: 'https://wrong.example' }, body: '{}' })).status, 403)
+  assert.equal((await fetch(BASE + '/api/logout', { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'text/plain' }, body: '{}' })).status, 415)
+  const logout = await fetch(BASE + '/api/logout', { method: 'POST', headers: { Cookie: cookie, 'Content-Type': 'application/json' }, body: '{}' })
+  assert.equal(logout.status, 200)
+  assert.match(logout.headers.get('set-cookie'), /Max-Age=0/)
+  assert.equal((await fetch(BASE + '/api/me', { headers: { Cookie: cookie } })).status, 401)
+  assert.equal((await call('/api/me', { token: session.token })).status, 401)
+})
+
+test('staff sessions stay 12 hours, expired sessions fail, and password reset revokes cookies', async () => {
+  const response = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: '123456a' }) })
+  assert.match(response.headers.get('set-cookie'), /Max-Age=43200/)
+  const session = await response.json()
+  const db = new DatabaseSync(join(dataDir, 'careconnect.db'))
+  db.prepare('UPDATE sessions SET expires_at = ? WHERE token = ?').run('2000-01-01T00:00:00.000Z', session.token)
+  db.close()
+  assert.equal((await fetch(BASE + '/api/me', { headers: { Cookie: response.headers.get('set-cookie').split(';')[0] } })).status, 401)
+  const patient = await login('user1')
+  const admin = await login('admin')
+  await call('/api/users/reset-password', { method: 'POST', token: admin, body: { username: 'user1', newPassword: '123456a' } })
+  assert.equal((await fetch(BASE + '/api/me', { headers: { Cookie: 'careconnect_session=' + patient } })).status, 401)
+})
+
+test('opened real registration needs consent and creates an identified real participant', async () => {
+  const db = new DatabaseSync(join(dataDir, 'careconnect.db'))
+  const original = db.prepare('SELECT data FROM config WHERE id = 1').get().data
+  // Isolated fixture models the operator explicitly opening registration; no approval fields are invented.
+  db.prepare('UPDATE config SET data = ? WHERE id = 1').run(JSON.stringify({ ...JSON.parse(original), realEnrollmentEnabled: true }))
+  try {
+    const body = { ...registration, phone: '19900000002', synthetic: false, consentVersion: '' }
+    assert.equal((await register(body)).status, 400)
+    const created = await register({ ...body, consentConfirmed: true })
+    assert.equal(created.status, 201)
+    const token = await login(body.phone, 'kangfu999')
+    const record = (await call('/api/study', { token })).body.participants[0]
+    assert.equal(record.synthetic, false)
+    assert.equal(record.id, created.body.participantId)
+    assert.equal(record.identity.phone, body.phone)
+  } finally {
+    db.prepare('UPDATE config SET data = ? WHERE id = 1').run(original)
+    db.close()
+  }
 })
 
 test('registration attempts are rate-limited', async () => {

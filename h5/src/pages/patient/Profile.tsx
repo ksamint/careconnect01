@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp, isAdmin } from '../../context/AppContext'
 import { PatientHeader, PatientLayout } from '../../components/layout'
@@ -16,12 +17,20 @@ export default function Profile() {
     ? data.submissions.filter(s => s.participantId === participant.id).sort((a, b) => (a.completedAt < b.completedAt ? 1 : -1))
     : []
   const navigate = useNavigate()
+  const [logoutError, setLogoutError] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const displayName = user ? (locale === 'zh' ? user.displayNameZh : user.displayNameEn) : '—'
 
   const handleLogout = async () => {
-    await logout()
-    navigate('/login', { replace: true })
+    setLoggingOut(true)
+    setLogoutError(false)
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch {
+      setLogoutError(true)
+    } finally { setLoggingOut(false) }
   }
 
   return (
@@ -91,7 +100,9 @@ export default function Profile() {
             )}
           </div>
 
-          <button type="button" onClick={handleLogout} className="w-full min-h-[48px] rounded-xl border-2 border-outline-variant text-on-surface-variant font-medium">
+          <p className="text-sm text-outline">{L('本浏览器登录状态保留60天，退出后需重新登录。', 'This browser keeps you signed in for 60 days. Signing out requires a new login.')}</p>
+          {logoutError && <p role="alert" className="text-error text-sm">{L('退出失败，请联网后重试。', 'Unable to sign out. Connect to the internet and try again.')}</p>}
+          <button type="button" disabled={loggingOut} onClick={handleLogout} className="w-full min-h-[48px] rounded-xl border-2 border-outline-variant text-on-surface-variant font-medium disabled:opacity-50">
             {tr.logout}
           </button>
         </main>
