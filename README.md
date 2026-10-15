@@ -41,9 +41,10 @@ Requires Node ≥ 22.13 (for `node:sqlite`).
 
 ## Deployment (AMD64 server)
 
+See **[DEPLOY.md](DEPLOY.md)** — including a paste-ready prompt for a local agent.
+
 ```bash
-cp .env.example .env      # set DEFAULT_PASSWORD / ADMIN_PASSWORD before the first start
-./scripts/deploy-amd.sh   # or: docker compose up -d --build
+./scripts/deploy-amd.sh   # creates .env with random passwords on first run, builds, starts, health-checks
 ```
 
 Default URL: **http://\<server-ip\>:8080/login**. Put a TLS reverse proxy (Caddy/Nginx) in front for WeChat.
@@ -52,7 +53,7 @@ Default URL: **http://\<server-ip\>:8080/login**. Put a TLS reverse proxy (Caddy
 
 - The database is `/data/careconnect.db` in the `careconnect-data` Docker volume.
 - The server writes a backup to `/data/backups/` at start-up and every 24 h (keeps the last 14). Admins can also press **Back up now** in Study settings.
-- Copy everything off the server regularly: `docker compose cp careconnect:/data ./careconnect-backup-$(date +%F)`.
+- `scripts/backup.sh` copies a snapshot off the container into `./backups/` (run it daily from cron). Restore steps are in [DEPLOY.md](DEPLOY.md).
 
 ## Accounts
 
