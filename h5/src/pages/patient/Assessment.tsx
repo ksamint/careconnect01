@@ -25,7 +25,9 @@ export default function Assessment() {
         <div className="px-6 py-12 max-w-md mx-auto text-center flex flex-col items-center gap-4">
           <Icon name="event_available" className="text-primary text-5xl" />
           <GlassCard className="p-6 w-full">
-            <p className="text-lg font-medium text-on-surface">{L('目前没有需要填写的问卷', 'No questionnaire is due right now')}</p>
+            <p className="text-lg font-medium text-on-surface">{participant && participant.cycles.length === 0
+              ? L('登记成功，请联系护士安排评估日期。', 'Registered successfully. Please contact your nurse to assign assessment dates.')
+              : L('目前没有需要填写的问卷', 'No questionnaire is due right now')}</p>
             {next && <p className="text-sm text-on-surface-variant mt-2">{L(`下一次：${next.def.label}（${next.scheduled}）`, `Next: ${next.def.label} (${next.scheduled})`)}</p>}
             {!participant && <p className="text-sm text-on-surface-variant mt-2">{L('您的账号尚未关联研究编号，请联系护士。', 'Your account is not linked to a study ID yet — please contact your nurse.')}</p>}
           </GlassCard>

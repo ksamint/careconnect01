@@ -142,3 +142,56 @@ test('drafts autosave per user', async () => {
   const r = await call('/api/drafts/DEMO-001%3A1%3AT1', { token })
   assert.deepEqual(r.body.draft.data, { step: 4 })
 })
+
+const registration = { phone: '19900000001', name: '虚构测试患者', birthday: '1980-02-29', synthetic: true }
+const register = body => call('/api/patient-registration', { method: 'POST', body })
+
+test('registration preserves the real-enrollment gate and validates identity fields', async () => {
+  assert.equal((await call('/api/patient-registration')).body.realEnrollmentEnabled, false)
+  assert.equal((await register({ ...registration, synthetic: false })).status, 403)
+  assert.equal((await register({ ...registration, synthetic: undefined })).status, 403)
+  for (const [field, value] of [['phone', '123'], ['name', ' '], ['name', 'x'.repeat(81)], ['birthday', '1981-02-29'], ['birthday', '1980-13-01'], ['birthday', '2999-01-01']]) {
+    const result = await register({ ...registration, [field]: value })
+    assert.equal(result.status, 400, field)
+    assert.equal(result.body.error, 'invalid_' + field)
+  }
+  const crossOrigin = await fetch(BASE + '/api/patient-registration', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://unrelated.example' }, body: JSON.stringify(registration) })
+  assert.equal(crossOrigin.status, 403)
+})
+
+test('registration creates one linked patient, supports phone login, and protects identity from research', async () => {
+  const results = await Promise.all([register(registration), register({ ...registration, phone: '+86 19900000001' })])
+  assert.deepEqual(results.map(r => r.status).sort(), [201, 409])
+  const account = results.find(r => r.status === 201).body
+  assert.equal(account.password, 'kangfu999')
+  assert.notEqual(account.username, registration.phone)
+  const token = await login('+86 19900000001', 'kangfu999')
+  const own = (await call('/api/study', { token })).body
+  assert.deepEqual(own.participants.map(p => p.id), [account.participantId])
+  assert.deepEqual(own.participants[0].identity, { phone: registration.phone, name: registration.name, birthday: registration.birthday })
+  assert.deepEqual(own.participants[0].cycles, [], 'no invented treatment dates')
+  assert.equal(own.participants[0].synthetic, true)
+  assert.equal((await call('/api/users', { token })).status, 403)
+  const other = await login('user1')
+  assert.ok(!(await call('/api/study', { token: other })).body.participants.some(p => p.id === account.participantId))
+  const nurse = await login('user2')
+  const staffRecord = (await call('/api/study', { token: nurse })).body.participants.find(p => p.id === account.participantId)
+  assert.equal(staffRecord.identity.name, registration.name)
+  const researcher = await login('user3')
+  const research = (await call('/api/study', { token: researcher })).body
+  assert.ok(research.participants.find(p => p.id === account.participantId))
+  for (const value of [registration.phone, registration.name, registration.birthday]) assert.ok(!JSON.stringify(research).includes(value), 'identity excluded from research')
+  const admin = await login('admin')
+  await call('/api/users/reset-password', { method: 'POST', token: admin, body: { username: account.username, newPassword: 'changed999' } })
+  assert.equal((await register(registration)).status, 409)
+  assert.ok(await login(registration.phone, 'changed999'), 'repeat registration cannot reset password')
+  await op(nurse, 'updateParticipant', { id: account.participantId, withdraw: true, withdrawReason: 'test' })
+  assert.equal((await call('/api/login', { method: 'POST', body: { username: registration.phone, password: 'changed999' } })).status, 403)
+  assert.equal((await register(registration)).status, 409, 'withdrawal cannot be bypassed by registering again')
+})
+
+test('registration attempts are rate-limited', async () => {
+  const results = []
+  for (let i = 0; i < 31; i++) results.push((await register({ ...registration, phone: 'bad' })).status)
+  assert.ok(results.includes(429))
+})

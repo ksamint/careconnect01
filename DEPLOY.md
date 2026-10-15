@@ -49,6 +49,14 @@ Open `http://<server-ip>:8080/login`.
 2. **Study settings**: enter ethics approval no./date, consent version, instrument version; tick the checklist as items are completed. Real enrolment stays locked until all are done.
 3. To start without the `DEMO-` training patients, set `SEED_DEMO=0` in `.env` **before the first start** (or remove the volume, see below).
 
+## Patient registration
+
+Patients open `/patient/assessment` or `/patient/register`, enter a mainland China mobile number, name and birthday, and receive an account automatically. They are signed in after registration; later visits can use the phone number and initial password `kangfu999`. Existing account passwords are unchanged. Duplicate registration never resets an existing account.
+
+Identity details are stored separately from pseudonymous research records. Nurses can search by phone/name and view these details; the research API and standard CSV exports exclude them. The phone is a login alias, while submissions retain the generated participant ID.
+
+Real registration follows the existing real-enrollment gate and requires the current consent confirmation. Until approved materials are configured, registration requires explicit fictional-data confirmation and creates synthetic demo records only. Nurses must assign cycle/infusion dates before questionnaires become due; registration does not invent dates.
+
 ## HTTPS (needed for WeChat)
 
 Point a domain's A record at the server, then:

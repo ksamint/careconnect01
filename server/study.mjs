@@ -134,13 +134,51 @@ function nextParticipantId(synthetic) {
 
 function createPatientLogin(participant) {
   const username = participant.id.toLowerCase()
-  const password = randomPassword()
+  const password = 'kangfu999'
   const { salt, hash } = hashPassword(password)
   run(
     'INSERT INTO users (username, password_hash, salt, role, portal, display_zh, display_en, org, participant_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     username, hash, salt, 'external_user', 'patient', participant.alias || participant.id, participant.alias || participant.id, 'org-careconnect', participant.id,
   )
   return { username, password }
+}
+
+export function registerPatient(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new HttpError(400, 'invalid_field')
+  const config = getConfig()
+  const synthetic = payload.synthetic === true
+  if (!synthetic && !config.realEnrollmentEnabled) throw new HttpError(403, 'real_enrollment_disabled')
+  if (!synthetic && (payload.consentConfirmed !== true || payload.consentVersion !== config.consentVersion)) throw new HttpError(400, 'consent_required')
+  const phone = typeof payload.phone === 'string' ? payload.phone.trim().replace(/^\+86\s*/, '').replace(/[ -]/g, '') : ''
+  const name = typeof payload.name === 'string' ? payload.name.trim() : ''
+  const birthday = typeof payload.birthday === 'string' ? payload.birthday : ''
+  if (!/^1[3-9]\d{9}$/.test(phone)) throw new HttpError(400, 'invalid_phone')
+  if (!name || name.length > 80 || /[\u0000-\u001f\u007f]/.test(name)) throw new HttpError(400, 'invalid_name')
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  const birthDate = new Date(birthday + 'T00:00:00Z')
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday) || birthday < '1900-01-01' || birthday > today || Number.isNaN(birthDate.getTime()) || birthDate.toISOString().slice(0, 10) !== birthday) throw new HttpError(400, 'invalid_birthday')
+  return tx(() => {
+    // A repeat registration must never sign into, overwrite, or reset an existing account.
+    if (get('SELECT 1 FROM patient_profiles WHERE phone = ?', phone) || get('SELECT 1 FROM users WHERE username = ?', phone)) throw new HttpError(409, 'registration_unavailable')
+    const participant = {
+      id: nextParticipantId(synthetic), synthetic, alias: '', username: '',
+      enrolledAt: new Date().toISOString(), enrolledBy: 'self_registration',
+      consentVersion: synthetic ? 'DEMO' : config.consentVersion,
+      consentDate: synthetic ? '' : today, status: 'active',
+      demographics: cleanObject({}, DEMO_KEYS), clinical: cleanObject({}, CLIN_KEYS), cycles: [], susScore: '',
+    }
+    const login = createPatientLogin(participant)
+    participant.username = login.username
+    saveParticipant(participant)
+    run('INSERT INTO patient_profiles (username, phone, name, birthday) VALUES (?, ?, ?, ?)', login.username, phone, name, birthday)
+    audit('self_registration', 'register_patient', 'participant', participant.id, { synthetic })
+    return { ...login, participantId: participant.id }
+  })
+}
+
+function withIdentity(participant) {
+  const identity = get('SELECT phone, name, birthday FROM patient_profiles WHERE username = ?', participant.username)
+  return identity ? { ...participant, identity } : participant
 }
 
 // ---------- read model ----------
@@ -157,7 +195,7 @@ export function studyFor(user) {
     return {
       schemaVersion: 1,
       config,
-      participants: participant ? [participant] : [],
+      participants: participant ? [withIdentity(participant)] : [],
       submissions: participant ? all('SELECT data FROM submissions WHERE participant_id = ?', pid).map(parse).map(withVerification) : [],
       revisions: participant ? all('SELECT r.data FROM revisions r JOIN submissions s ON s.id = r.submission_id WHERE s.participant_id = ?', pid).map(parse) : [],
       contacts: [],
@@ -170,7 +208,7 @@ export function studyFor(user) {
   return {
     schemaVersion: 1,
     config,
-    participants: all('SELECT data FROM participants ORDER BY id').map(parse),
+    participants: all('SELECT data FROM participants ORDER BY id').map(parse).map(p => isStaff(user) ? withIdentity(p) : p),
     submissions: all('SELECT data FROM submissions').map(parse).map(withVerification),
     revisions: all('SELECT data FROM revisions').map(parse),
     contacts: all('SELECT data FROM contacts').map(parse),

@@ -65,6 +65,8 @@ export interface Cycle {
 }
 
 export interface Participant {
+  /** Identity details are supplied only to the patient and clinical staff, not research exports. */
+  identity?: { phone: string; name: string; birthday: string }
   id: string
   synthetic: boolean
   alias: string

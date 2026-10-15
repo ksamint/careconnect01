@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useApp, homePathForUser } from '../context/AppContext'
 import { getAuthProvider } from '../auth'
 import { Icon, GlassCard } from '../components/ui'
 import { LangButton, PrimaryButton } from '../components/layout/navigation'
 
 export default function Login() {
-  const { tr, login } = useApp()
+  const { tr, login, locale } = useApp()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -96,6 +96,7 @@ export default function Login() {
               {loading ? tr.loggingIn : tr.login}
             </PrimaryButton>
           </form>
+          <Link to="/patient/register" className="flex items-center justify-center min-h-[48px] mt-4 text-secondary font-medium">{tr.rolePatient} · {locale === 'zh' ? '首次登记' : 'First-time registration'}</Link>
         </GlassCard>
       </div>
     </div>

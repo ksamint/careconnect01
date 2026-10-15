@@ -98,7 +98,7 @@ export function PrimaryButton({ children, className = '', ...props }: React.Butt
       type="button"
       {...props}
       className={`w-full min-h-[56px] rounded-2xl bg-primary-container text-white font-semibold text-base shadow-[0_8px_24px_-4px_rgba(76,175,80,0.45)] active:scale-[0.98] disabled:opacity-45 disabled:shadow-none transition-all ${className}`}
-    />
+    >{children}</button>
   )
 }
 
@@ -108,6 +108,6 @@ export function SecondaryButton({ children, className = '', ...props }: React.Bu
       type="button"
       {...props}
       className={`w-full min-h-[48px] rounded-2xl border-2 border-outline-variant/60 text-on-surface font-medium active:scale-[0.98] transition-all ${className}`}
-    />
+    >{children}</button>
   )
 }

@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AppProvider, useApp, homePathForUser, isAdmin } from './context/AppContext'
 import type { Portal } from './auth'
 import Login from './pages/Login'
+import PatientRegister from './pages/patient/Register'
 import AdminHub from './pages/admin/AdminHub'
 import UserManagement from './pages/admin/UserManagement'
 import StudySettings from './pages/admin/StudySettings'
@@ -50,18 +51,24 @@ function HomeRedirect() {
   return <Navigate to={homePathForUser(user)} replace />
 }
 
+function PatientAssessmentEntry() {
+  const { isAuthenticated } = useApp()
+  return isAuthenticated ? <RequirePortal portal="patient"><Assessment /></RequirePortal> : <PatientRegister />
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/patient/register" element={<PatientRegister />} />
 
       <Route path="/admin" element={<RequireAuth><RequireAdmin><AdminHub /></RequireAdmin></RequireAuth>} />
       <Route path="/admin/users" element={<RequireAuth><RequireAdmin><UserManagement /></RequireAdmin></RequireAuth>} />
       <Route path="/admin/study" element={<RequireAuth><RequireAdmin><StudySettings /></RequireAdmin></RequireAuth>} />
 
       <Route path="/patient/home" element={<RequireAuth><RequirePortal portal="patient"><PatientHome /></RequirePortal></RequireAuth>} />
-      <Route path="/patient/assessment" element={<RequireAuth><RequirePortal portal="patient"><Assessment /></RequirePortal></RequireAuth>} />
+      <Route path="/patient/assessment" element={<PatientAssessmentEntry />} />
       <Route path="/patient/assessment/success" element={<RequireAuth><RequirePortal portal="patient"><AssessmentSuccess /></RequirePortal></RequireAuth>} />
       <Route path="/patient/wisdom" element={<RequireAuth><RequirePortal portal="patient"><Wisdom /></RequirePortal></RequireAuth>} />
       <Route path="/patient/wisdom/:id" element={<RequireAuth><RequirePortal portal="patient"><WisdomArticle /></RequirePortal></RequireAuth>} />

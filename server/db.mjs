@@ -34,6 +34,12 @@ db.exec(`
   );
   CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS participants (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS patient_profiles (
+    username TEXT PRIMARY KEY REFERENCES users(username),
+    phone TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    birthday TEXT NOT NULL
+  );
   CREATE TABLE IF NOT EXISTS submissions (
     id TEXT PRIMARY KEY,
     participant_id TEXT NOT NULL REFERENCES participants(id),

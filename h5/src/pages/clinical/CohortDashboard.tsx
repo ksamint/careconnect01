@@ -56,7 +56,7 @@ export default function CohortDashboard() {
       || (filter === 'today' && (r.s.due || r.s.overdue))
       || (filter === 'alerts' && r.s.unhandled)
       || (filter === 'verify' && r.s.toVerify))
-    .filter(r => !query || r.p.id.toLowerCase().includes(query.toLowerCase()) || r.p.alias.includes(query))
+    .filter(r => !query || [r.p.id, r.p.alias, r.p.identity?.name, r.p.identity?.phone].some(value => value?.toLowerCase().includes(query.trim().toLowerCase())))
     .sort((a, b) => Number(b.s.unhandled) - Number(a.s.unhandled) || b.s.overdue - a.s.overdue || a.p.id.localeCompare(b.p.id))
 
   const filters: { id: Filter; label: string }[] = [
@@ -96,7 +96,7 @@ export default function CohortDashboard() {
 
       <div className="relative mb-3">
         <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-outline text-xl" />
-        <input type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder={L('搜索研究编号或代称…', 'Search study ID or alias…')} className="w-full pl-10 pr-4 py-3 rounded-xl border border-surface-variant bg-white text-sm" />
+        <input type="search" value={query} onChange={e => { setQuery(e.target.value); if (e.target.value) setFilter('all') }} placeholder={L('搜索编号、姓名或手机号…', 'Search ID, name or phone…')} className="w-full pl-10 pr-4 py-3 rounded-xl border border-surface-variant bg-white text-sm" />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2 mb-3">
@@ -118,6 +118,7 @@ export default function CohortDashboard() {
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className="font-semibold text-on-surface">{p.id}</span>
                   {p.alias && <span className="text-sm text-on-surface-variant">{p.alias}</span>}
+                  {p.identity && <span className="text-sm text-on-surface-variant">{p.identity.name} · {p.identity.phone}</span>}
                   <RiskBadge level={riskOf[s.level]} />
                   {s.unhandled && <span className="text-[11px] text-risk-critical font-semibold">{L('未处置', 'open')}</span>}
                 </div>

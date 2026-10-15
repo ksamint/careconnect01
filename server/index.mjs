@@ -4,7 +4,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { join, normalize, extname, resolve } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { get, run, all, checkPassword, hashPassword, backupNow, audit, DB_PATH } from './db.mjs'
-import { applyOp, studyFor, saveDraft, loadDraft, deleteDraft, HttpError } from './study.mjs'
+import { applyOp, studyFor, saveDraft, loadDraft, deleteDraft, HttpError, registerPatient, getConfig } from './study.mjs'
 import { seed } from './seed.mjs'
 
 const PORT = Number(process.env.PORT || 8787)
@@ -17,6 +17,7 @@ seed()
 // ---------- auth ----------
 
 const failures = new Map() // username → { count, until }
+const registrations = new Map()
 
 function toUser(row) {
   return {
@@ -78,12 +79,34 @@ async function api(req, res, url) {
 
   if (path === '/api/health') return send(res, 200, { ok: true })
 
+  if (path === '/api/patient-registration' && method === 'GET') {
+    const config = getConfig()
+    return send(res, 200, { realEnrollmentEnabled: config.realEnrollmentEnabled, consentVersion: config.consentVersion })
+  }
+
+  if (path === '/api/patient-registration' && method === 'POST') {
+    const now = Date.now()
+    for (const [key, value] of registrations) if (value.until <= now) registrations.delete(key)
+    const key = req.socket.remoteAddress
+    const limit = registrations.get(key) ?? { count: 0, until: now + 60_000 }
+    if (++limit.count > 30) throw new HttpError(429, 'registration_rate_limited')
+    registrations.set(key, limit)
+    const origin = req.headers.origin
+    if (origin) {
+      let host
+      try { host = new URL(origin).host } catch { throw new HttpError(403, 'forbidden') }
+      if (host !== req.headers.host) throw new HttpError(403, 'forbidden')
+    }
+    return send(res, 201, registerPatient(await readBody(req)))
+  }
+
   if (path === '/api/login' && method === 'POST') {
     const { username, password } = await readBody(req)
     const key = String(username || '').trim().toLowerCase()
     const f = failures.get(key)
     if (f && f.until > Date.now()) return send(res, 423, { error: 'account_locked' })
-    const row = get('SELECT * FROM users WHERE username = ?', key)
+    const phone = key.replace(/^\+86\s*/, '').replace(/[ -]/g, '')
+    const row = get('SELECT * FROM users WHERE username = ?', key) ?? get('SELECT u.* FROM users u JOIN patient_profiles p ON p.username = u.username WHERE p.phone = ?', phone)
     if (!row || !checkPassword(row, password)) {
       const count = (f?.count ?? 0) + 1
       failures.set(key, { count, until: count >= 5 ? Date.now() + 5 * 60_000 : 0 })
@@ -96,7 +119,7 @@ async function api(req, res, url) {
     failures.delete(key)
     const token = randomBytes(24).toString('base64url')
     const ms = row.portal === 'patient' ? PATIENT_SESSION_DAYS * 86_400_000 : STAFF_SESSION_HOURS * 3_600_000
-    run('INSERT INTO sessions (token, username, created_at, expires_at) VALUES (?, ?, ?, ?)', token, key, new Date().toISOString(), new Date(Date.now() + ms).toISOString())
+    run('INSERT INTO sessions (token, username, created_at, expires_at) VALUES (?, ?, ?, ?)', token, row.username, new Date().toISOString(), new Date(Date.now() + ms).toISOString())
     run('DELETE FROM sessions WHERE expires_at < ?', new Date().toISOString())
     return send(res, 200, { token, user: toUser(row) })
   }

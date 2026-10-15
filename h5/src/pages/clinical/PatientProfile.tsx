@@ -71,6 +71,11 @@ export default function PatientProfile() {
           </div>
           {p.status === 'withdrawn' ? <span className="text-xs font-semibold text-outline border rounded-full px-2 py-1">{L('已退出', 'Withdrawn')}</span> : null}
         </div>
+        {p.identity && <dl className="mb-4 text-sm space-y-1">
+          <div><dt className="inline text-outline">{L('姓名', 'Name')}: </dt><dd className="inline">{p.identity.name}</dd></div>
+          <div><dt className="inline text-outline">{L('手机号', 'Phone')}: </dt><dd className="inline">{p.identity.phone}</dd></div>
+          <div><dt className="inline text-outline">{L('出生日期', 'Birthday')}: </dt><dd className="inline">{p.identity.birthday}</dd></div>
+        </dl>}
         <div className="grid grid-cols-2 gap-2 text-sm">
           <button type="button" onClick={() => navigate(`${base}/crf`)} className="rounded-xl border border-surface-variant p-3 text-left">
             <span className="text-xs text-on-surface-variant block">{L('基线资料（CRF）', 'Baseline CRF')}</span>
