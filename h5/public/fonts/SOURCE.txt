@@ -1,0 +1,3 @@
+Material Symbols from https://github.com/google/material-design-icons/tree/49d4db35df873165d6bd6ba09b063c7dafbac2f4/variablefont
+Apache License 2.0; see LICENSE.material-symbols.txt
+Locally instantiated with fontTools4.67.0: opsz24, GRAD0; Outlined wght300 with FILL0..1 preserved; Rounded wght400 FILL1. All glyphs retained.
