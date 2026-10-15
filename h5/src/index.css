@@ -209,3 +209,39 @@ body {
 input, textarea, button {
   font-family: inherit;
 }
+
+.care-app { max-width: 960px; margin: auto; padding: 24px 20px 64px; }
+.care-app header { padding: 12px 0 24px; }
+.care-app .brand { color: var(--color-primary); font-size: 28px; font-weight: 700; }
+.care-app h1 { font-size: 28px; margin: 28px 0 12px; }
+.care-app h2 { font-size: 22px; margin: 0 0 16px; }
+.care-app h3 { font-size: 18px; margin: 24px 0 12px; }
+.care-app p { line-height: 1.7; margin: 10px 0; }
+.care-app section { background: #fff; border: 1px solid #d4dfd0; border-radius: 20px; margin: 20px 0; padding: 24px; }
+.care-app aside { padding: 16px; border: 1px solid #ba864b; background: #fff1df; border-radius: 12px; margin: 16px 0; }
+.care-app button, .care-app .download { min-height: 48px; background: #006e1c; color: #fff; border: 1px solid #006e1c; border-radius: 10px; padding: 10px 16px; font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.care-app .secondary { background: #fff; color: #006e1c; }
+.care-app button:disabled { opacity: .5; cursor: default; }
+.care-app button:focus-visible, .care-app a:focus-visible, .care-app input:focus-visible, .care-app textarea:focus-visible, .care-app select:focus-visible { outline: 3px solid #0061a4; outline-offset: 3px; }
+.care-app label { display: block; margin: 16px 0; font-weight: 600; }
+.care-app input, .care-app select, .care-app textarea { display: block; width: 100%; box-sizing: border-box; background: #fff; color: #1a1c1b; min-height: 48px; margin-top: 8px; border: 1px solid #6f7a6b; border-radius: 8px; padding: 12px; font-size: 16px; }
+.care-app textarea { min-height: 100px; }
+.care-app fieldset { border: 0; padding: 0; min-width: 0; }
+.care-app legend { font-size: 22px; font-weight: 700; padding-top: 24px; }
+.care-app .scores, .care-app .actions, .care-app .participant-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.care-app .scores button { min-width: 48px; }
+.care-app .selected { box-shadow: 0 0 0 3px #80c990; }
+.care-app .assessment-card { width: 100%; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 12px; background: #edf6ed; color: #17452b; }
+.care-app .record { white-space: pre-wrap; overflow-wrap: anywhere; background: #f4f3f1; padding: 16px; border-radius: 8px; font-size: 13px; max-height: 480px; overflow: auto; }
+.care-app [role=alert] { color: #a31818; overflow-wrap: anywhere; }
+.care-app .save-status { font-weight: 700; }
+.care-app progress { width: 100%; accent-color: #006e1c; }
+.care-app .qr { display: block; max-width: 260px; width: 100%; margin: 20px 0; }
+.care-app .amend-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 12px; }
+@media (max-width: 600px) { .care-app { padding: 16px 12px 48px; } .care-app section { padding: 18px; } .care-app h1 { font-size: 24px; } }
+.care-app table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+.care-app td, .care-app th { text-align: left; border-bottom: 1px solid #d4dfd0; padding: 8px; }
+.care-app caption { text-align: left; font-weight: 700; margin-bottom: 8px; }
+.care-app .domain-scores { background: #edf6ed; padding: 16px; border-radius: 10px; }
+.care-app .domain-scores dt { font-weight: 700; margin-top: 10px; }
+.care-app .domain-scores dd { margin: 4px 0 12px; }

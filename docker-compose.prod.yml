@@ -1,0 +1,14 @@
+# Existing carepro.opcglobal.cn Traefik route targets careconnect-h5:80.
+services:
+  careconnect-h5:
+    container_name: careconnect-h5
+    hostname: careconnect-h5
+    networks:
+      - default
+      - coolify
+  careconnect-api:
+    environment:
+      TRUST_PROXY_HEADERS: "true"
+networks:
+  coolify:
+    external: true

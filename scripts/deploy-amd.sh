@@ -1,27 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
-
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-
-echo "==> Building H5 assets..."
-cd h5
-npm install --no-audit --no-fund
-npm run build
-cd "$ROOT"
-
-echo "==> Building Docker image (linux/amd64)..."
-DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose build
-
-echo "==> Starting container..."
-docker compose up -d
-
-PORT="8080"
-if [[ -f .env ]]; then
-  # shellcheck disable=SC1091
-  source .env
-  PORT="${HOST_PORT:-8080}"
-fi
-
-echo "==> CareConnect H5 is running at http://localhost:${PORT}/login"
+[[ -f .env ]] || { echo 'Configure .env with the HTTPS origin first.' >&2; exit 1; }
+# Compose reads .env; never execute it as shell code.
+npm --prefix h5 ci --no-audit --no-fund
+npm --prefix h5 run build
+docker compose config --quiet
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose build --pull
+# Existing named data and backup volumes survive replacement and rollback.
+docker compose up -d --wait --wait-timeout 120
 docker compose ps
+echo 'Deployment ready. Bootstrap staff access with the backend CLI; verify using synthetic participants.'
