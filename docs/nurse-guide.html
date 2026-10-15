@@ -1,0 +1,295 @@
+<title>症状问卷护士采集指南</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a single phone-width column a nurse can scroll on the ward — visit timeline first, then the daily routine, then one card per situation, then the red lines. */
+:root {
+  --bg: #f4f6f3;
+  --surface: #ffffff;
+  --ink: #18201b;
+  --muted: #56645b;
+  --rule: #d9e0da;
+  --green: #2c7a47;
+  --green-soft: #dcefe2;
+  --blue: #1f5f9e;
+  --blue-soft: #dde9f6;
+  --red: #b3261e;
+  --red-soft: #fbe3e0;
+  --amber: #9a5b00;
+  --amber-soft: #fcebd2;
+  --font-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121714; --surface: #1b221e; --ink: #e5ebe6; --muted: #a0aea5; --rule: #2d3832;
+    --green: #74c992; --green-soft: #1f3a29; --blue: #8cb9ec; --blue-soft: #1d3046;
+    --red: #ff8a80; --red-soft: #45201d; --amber: #f0b45c; --amber-soft: #3f2e15; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121714; --surface: #1b221e; --ink: #e5ebe6; --muted: #a0aea5; --rule: #2d3832;
+  --green: #74c992; --green-soft: #1f3a29; --blue: #8cb9ec; --blue-soft: #1d3046;
+  --red: #ff8a80; --red-soft: #45201d; --amber: #f0b45c; --amber-soft: #3f2e15; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.7; }
+.wrap { max-width: 720px; margin: 0 auto; padding-block: 24px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+h1 { font-size: clamp(26px, 6vw, 34px); font-weight: 900; margin: 0; line-height: 1.3; text-wrap: balance; }
+h2 { font-size: 20px; margin: 0 0 12px; text-wrap: balance; }
+h3 { font-size: 17px; margin: 0; }
+p { margin: 0; }
+.lede { color: var(--muted); margin-top: 8px; }
+.mono { font-family: var(--font-mono); }
+
+/* visit strip */
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.stop { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 8px; text-align: center; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stop .tag { font-family: var(--font-mono); font-size: 22px; font-weight: 500; color: var(--green); }
+.stop.infuse .tag { color: var(--blue); font-family: var(--font-body); font-size: 17px; font-weight: 700; padding-block: 3px; }
+.stop .day { font-weight: 700; font-size: 14px; }
+.stop .win { font-size: 12px; color: var(--muted); }
+.caption { font-size: 14px; color: var(--muted); margin-top: 10px; }
+
+/* daily routine */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; counter-reset: s; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 36px 1fr; gap: 12px; align-items: start; background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 12px 14px; }
+.steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; background: var(--green); color: var(--surface); font-weight: 700; display: grid; place-items: center; }
+.steps b { display: block; }
+
+/* situations */
+.cases { display: flex; flex-direction: column; gap: 12px; }
+details { background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; }
+summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 12px; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: "+"; margin-left: auto; font-size: 22px; color: var(--muted); line-height: 1; }
+details[open] summary::after { content: "−"; }
+summary:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; border-radius: 12px; }
+.when { font-size: 13px; color: var(--muted); display: block; font-weight: 400; }
+.body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+.body ol { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.btn { display: inline-block; padding: 0 8px; border-radius: 6px; background: var(--blue-soft); color: var(--blue); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.btn.go { background: var(--green-soft); color: var(--green); }
+.tip { font-size: 14px; background: var(--amber-soft); color: var(--ink); border-radius: 8px; padding: 8px 12px; }
+.icon { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 900; font-size: 15px; flex-shrink: 0; }
+.i-green { background: var(--green-soft); color: var(--green); }
+.i-blue { background: var(--blue-soft); color: var(--blue); }
+.i-red { background: var(--red-soft); color: var(--red); }
+.i-amber { background: var(--amber-soft); color: var(--amber); }
+
+/* alert levels */
+.levels { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.level { border-radius: 10px; padding: 10px 12px; font-size: 14px; }
+.level b { display: block; font-size: 16px; }
+.level.hi { background: var(--red-soft); }
+.level.hi b { color: var(--red); }
+.level.mid { background: var(--amber-soft); }
+.level.mid b { color: var(--amber); }
+
+/* red lines */
+.donts { background: var(--red-soft); border-radius: 14px; padding: 16px 18px; }
+.donts ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.donts h2 { color: var(--red); }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--surface); border-radius: 12px; overflow: hidden; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--rule); }
+th { font-size: 13px; color: var(--muted); font-weight: 500; }
+@media (prefers-reduced-motion: no-preference) { details[open] .body { animation: open .15s ease-out; } @keyframes open { from { opacity: .4 } to { opacity: 1 } } }
+@media (max-width: 420px) { .strip { gap: 4px; } .stop .tag { font-size: 18px; } .levels { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>症状问卷 · 护士采集指南</h1>
+    <p class="lede">日间化疗症状群课题（C-194）。每位患者、每个化疗周期，填 <b>3 次</b>同一份 19 题问卷。下面先看时间点，再看每天要做的 3 件事，遇到具体情况点开对应卡片。</p>
+  </header>
+
+  <section aria-labelledby="t-visits">
+    <h2 id="t-visits">什么时候填：以输注当天为第 0 天</h2>
+    <div class="strip">
+      <div class="stop"><span class="tag">T0</span><span class="day">第 −1 天</span><span class="win">前 1 天 ~ 输注前</span></div>
+      <div class="stop infuse"><span class="tag">输注</span><span class="day">第 0 天</span><span class="win">化疗当天</span></div>
+      <div class="stop"><span class="tag">T1</span><span class="day">第 3 天</span><span class="win">第 2–4 天</span></div>
+      <div class="stop"><span class="tag">T2</span><span class="day">第 8 天</span><span class="win">第 7–9 天</span></div>
+    </div>
+    <p class="caption">系统按输注日期自动算好这些日子。超出范围也可以填，数据保留，导出时会自动标“超窗”。T0 一定要在开始输液之前完成。</p>
+  </section>
+
+  <section aria-labelledby="t-daily">
+    <h2 id="t-daily">每天上班做 3 件事</h2>
+    <ol class="steps">
+      <li><div><b>登录，打开「今日待随访」</b>用护士账号登录手机或平板，首页默认就是今天该随访的患者。</div></li>
+      <li><div><b>先处理红色预警</b>点「待处置预警」，逐个打电话或安排就医，然后点 <span class="btn">记录预警处置</span>。</div></li>
+      <li><div><b>再催今天没填的人</b>按「提醒三步」联系，每联系一次就点 <span class="btn">记录提醒</span>。有纸质问卷的，当天录入。</div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="t-cases">
+    <h2 id="t-cases">遇到这些情况，这样做</h2>
+    <div class="cases">
+
+      <details open>
+        <summary><span class="icon i-green">入</span><h3>新患者入组<span class="when">签完知情同意书之后</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>首页点 <span class="btn go">新患者入组</span>。</li>
+            <li>代称写床号或缩写（如“12 床”），<b>不要写真实姓名</b>。</li>
+            <li>填签同意书的日期、第 1 周期的<b>输注开始日</b>。</li>
+            <li>勾选“为患者开通手机填写账号”，点 <span class="btn go">确认入组</span>。</li>
+            <li>屏幕上出现账号和 6 位密码，<b>只显示这一次</b>：抄在患者须知卡上交给患者。</li>
+            <li>当场教患者在手机上登录，填完 T0。</li>
+            <li>当天把人口学和临床资料补齐（患者页面点「基线资料」，临床资料从 HIS 查）。</li>
+          </ol>
+          <p class="tip">密码忘了：患者页面点「患者登录账号」重新生成一个新密码即可。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-green">手</span><h3>患者自己用手机填<span class="when">最常见的情况</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>患者登录后首页会出现“完成 T1 症状评估”这类任务，点进去。</li>
+            <li>每屏一道题，点 0–10 的数字，再点“下一题”。不想答的题点“跳过此题”。</li>
+            <li>最后一屏核对，点“确认并提交”。</li>
+          </ol>
+          <p class="tip">每点一下都会自动保存。中途退出、关掉微信、换手机，再登录会从断开的那题继续。没网也能提交，联网后自动上传。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-blue">代</span><h3>患者不会用手机 / 视力不好<span class="when">在病房当面填</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>打开患者页面，在要填的时点下点 <span class="btn go">现场填写</span>。</li>
+            <li>选“患者自己在本设备上填写”（平板递给患者），或“护士读题、按患者回答代为点选”。</li>
+            <li>护士代点时，<b>只读题目原文和 0–10 的说明</b>，不要解释、不要替患者估分。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-blue">纸</span><h3>录入纸质问卷 / 电话询问<span class="when">包括已有 150 例的回录</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>患者页面对应时点点 <span class="btn">录入纸质/电话</span>。</li>
+            <li>选“纸质问卷”或“电话询问”，选“本人填写”或“代填”。</li>
+            <li>日期填<b>纸上写的填写日期</b>（不是今天的录入日期）。</li>
+            <li>照纸逐题点数字。<b>患者没填的题点“空”，绝对不要点 0</b>。</li>
+            <li>19 题都点过后才能保存。保存后这份记录显示“待核对”。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-blue">核</span><h3>双人核对<span class="when">每一份纸质 / 电话录入都要做</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>由<b>另一名护士</b>用自己的账号登录（录入人自己不能核对）。</li>
+            <li>首页点「待双人核对」，打开记录，点 <span class="btn">双人核对录入</span>。</li>
+            <li>不看系统里的数，直接照纸质表把 19 题再点一遍，点“提交比对”。</li>
+            <li>全部一致：自动标为“已核对”。有不一致：标红的题对照纸质表查——你点错了就改正再比对；第一次录错了就用“修改答案”更正。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-amber">改</span><h3>修改患者的答案<span class="when">录错了、患者当场更正</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>患者页面点开那次问卷，点 <span class="btn">修改答案</span>。</li>
+            <li>输入<b>你自己的登录密码</b>确认身份。</li>
+            <li>改需要改的题，每题会显示“原 x → 新 y”。</li>
+            <li>选修改原因（必选），点“保存修改”。</li>
+          </ol>
+          <p class="tip">原始答案永远保留，谁、什么时候、为什么改都会记录，审查时可以查到。不要用修改去“美化”数据。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-amber">催</span><h3>患者到时间没填：提醒三步<span class="when">每个时点最多联系 3 次</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li><b>当天上午 9 点</b>：发消息提醒，点 <span class="btn">记录提醒</span> 选“上午 9 点推送”。</li>
+            <li><b>当天晚上</b>还没填：再发一次，记录“晚间补推”。</li>
+            <li><b>第二天</b>还没填：打电话，可以在电话里直接问完 19 题，用“录入纸质/电话”录入。记录“次日电话”。</li>
+            <li>三次后仍没完成：点 <span class="btn">记为缺失</span>，选原因。<b>不要再追</b>。</li>
+          </ol>
+          <p class="tip">每次联系都要点“记录提醒”。论文要报告“自动推送完成率”和“人工干预后完成率”，靠的就是这些记录。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-red">警</span><h3>出现预警<span class="when">患者提交后自动判定</span></h3></summary>
+        <div class="body">
+          <div class="levels">
+            <div class="level hi"><b>红色 · 危急</b>任一症状 ≥ 7 分。当天内电话联系。</div>
+            <div class="level mid"><b>橙色 · 升高</b>任一症状 4–6 分。下次随访时重点询问。</div>
+          </div>
+          <ol>
+            <li>打开那次问卷看哪几题分高，电话了解情况。</li>
+            <li>按科室预警流程处理：健康指导 / 通知医生 / 建议返院或就医。</li>
+            <li>处理完点 <span class="btn">记录预警处置</span>，选处理方式、写一句备注。系统自动算出响应用了多长时间。</li>
+          </ol>
+          <p class="tip">告诉患者：感觉很不舒服时直接就医或拨打 120，不要等平台回复。平台不做诊断。</p>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-green">周</span><h3>患者回来做下一个周期化疗<span class="when">新周期 + 上周期结局</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>患者页面点「基线资料」，拉到下面点 <span class="btn go">新增化疗周期</span>，填新的输注开始日。系统自动排好新的 T0/T1/T2。</li>
+            <li>在<b>上一个周期</b>里补填结局：期间有没有非计划就诊（日期、门诊/急诊/再入院、主要原因）、计划剂量、实际剂量、下周期推迟了几天。</li>
+            <li>点“保存”。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-amber">退</span><h3>患者要退出研究</h3></summary>
+        <div class="body">
+          <ol>
+            <li>患者页面点「基线资料」，拉到最下面「退出研究」，填原因，点确认。</li>
+            <li>已交的数据保留，患者账号停用，不会再出现在待随访名单里。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details>
+        <summary><span class="icon i-blue">末</span><h3>研究结束时<span class="when">最后一次随访后</span></h3></summary>
+        <div class="body">
+          <ol>
+            <li>请患者填 SUS 可用性问卷（纸质），算出 0–100 分。</li>
+            <li>在患者「基线资料」页面最下面填“SUS 可用性得分”。</li>
+          </ol>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="donts" aria-labelledby="t-donts">
+    <h2 id="t-donts">5 条红线</h2>
+    <ul>
+      <li>不在系统里写患者真实姓名、身份证号、电话。</li>
+      <li>没答的题是“空”，<b>不是 0</b>。</li>
+      <li>不共用账号，不把自己的密码告诉别人。双人核对必须是两个人、两个账号。</li>
+      <li>不通过微信、QQ 传导出的数据文件。</li>
+      <li>真实入组开放前（系统显示“真实入组未开启”），只能登记 DEMO 演示患者，用来培训。</li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="t-acc">
+    <h2 id="t-acc">账号速查</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>谁</th><th>登录后看到</th><th>能做什么</th></tr></thead>
+        <tbody>
+          <tr><td>患者</td><td>首页 · 评估</td><td>只填自己的问卷</td></tr>
+          <tr><td>研究护士（每人一个账号）</td><td>临床指挥中心</td><td>入组、录入、修改、核对、提醒、预警处置</td></tr>
+          <tr><td>研究协调员</td><td>人群分析</td><td>查看进度、导出数据（只读）</td></tr>
+          <tr><td>管理员</td><td>管理控制台</td><td>研究设置、开放真实入组、重置密码、备份</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
