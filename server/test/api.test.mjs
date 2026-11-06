@@ -277,6 +277,14 @@ test('admin hide is reversible, retains source rows, revokes login, and filters 
     assert.ok(!body.submissions.some(s => s.participantId === pid))
     assert.equal(body.hiddenParticipants.some(p => p.id === pid), token === admin)
   }
+  const researcher = await login('user3')
+  const researchView = (await call('/api/study', { token: researcher })).body
+  assert.ok(!researchView.audit.some(a => a.entityId === pid || a.entityId === submitted.body.result.submissionId), 'hidden patient leaks through research audit')
+  assert.equal((await op(nurse, 'updateParticipant', { id: pid, alias: 'stale edit' })).body.error, 'participant_hidden')
+  for (const operation of ['verify', 'alertAction']) {
+    assert.equal((await op(nurse, operation, { submissionId: submitted.body.result.submissionId })).body.error, 'participant_hidden')
+  }
+  assert.equal((await op(nurse, 'revise', { submissionId: submitted.body.result.submissionId }, '123456a')).body.error, 'participant_hidden')
   const blocked = await op(nurse, 'submit', { participantId: pid })
   assert.equal(blocked.body.error, 'participant_hidden')
   const db = new DatabaseSync(join(dataDir, 'careconnect.db'), { readOnly: true })

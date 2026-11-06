@@ -220,7 +220,7 @@ export function studyFor(user) {
     contacts: all('SELECT data FROM contacts').map(parse).filter(r => visible.has(r.participantId)),
     missedVisits: all('SELECT data FROM missed_visits').map(parse).filter(r => visible.has(r.participantId)),
     alertActions: all('SELECT data FROM alert_actions').map(parse).filter(r => visible.has(r.participantId)),
-    audit: isAdmin(user) || user.portal === 'research' ? all('SELECT data FROM audit ORDER BY seq DESC').map(parse) : [],
+    audit: isAdmin(user) || user.portal === 'research' ? all('SELECT data FROM audit ORDER BY seq DESC').map(parse).filter(a => isAdmin(user) || (a.entity === 'participant' ? visible.has(a.entityId) : a.entity === 'submission' ? submissionIds.has(a.entityId) : true)) : [],
   }
 }
 
@@ -230,6 +230,11 @@ export function applyOp(user, op, payload = {}, password) {
   const actor = user.username
   const now = new Date().toISOString()
 
+  // Stale staff screens must not keep editing records removed from their read model.
+  if (isStaff(user) && ['updateParticipant', 'resetPatientLogin', 'contact', 'markMissed'].includes(op)) {
+    const p = getParticipant(str(op === 'updateParticipant' ? payload.id : payload.participantId))
+    if (p?.hiddenAt) throw new HttpError(409, 'participant_hidden')
+  }
   switch (op) {
     case 'enroll': {
       requireStaff(user)
@@ -399,6 +404,7 @@ export function applyOp(user, op, payload = {}, password) {
       requirePassword(user, password)
       const sub = getSubmission(str(payload.submissionId))
       if (!sub) throw new HttpError(404, 'not_found')
+      if (getParticipant(sub.participantId)?.hiddenAt) throw new HttpError(409, 'participant_hidden')
       const reason = str(payload.reason, 500).trim()
       if (!reason) throw new HttpError(400, 'reason_required')
       const next = responses(payload.responses)
@@ -419,6 +425,7 @@ export function applyOp(user, op, payload = {}, password) {
       requireStaff(user)
       const sub = getSubmission(str(payload.submissionId))
       if (!sub) throw new HttpError(404, 'not_found')
+      if (getParticipant(sub.participantId)?.hiddenAt) throw new HttpError(409, 'participant_hidden')
       if (sub.enteredBy === actor) throw new HttpError(403, 'same_person')
       const blind = responses(payload.responses)
       return tx(() => {
@@ -474,6 +481,7 @@ export function applyOp(user, op, payload = {}, password) {
       requireStaff(user)
       const sub = getSubmission(str(payload.submissionId))
       if (!sub) throw new HttpError(404, 'not_found')
+      if (getParticipant(sub.participantId)?.hiddenAt) throw new HttpError(409, 'participant_hidden')
       const type = str(payload.type)
       if (!ACTION_TYPES.includes(type)) throw new HttpError(400, 'invalid_action')
       const a = { id: newId('ACT'), submissionId: sub.id, participantId: sub.participantId, type, notes: str(payload.notes, 1000), followUp: !!payload.followUp, handledAt: now, handledBy: actor }
