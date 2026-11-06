@@ -65,21 +65,6 @@ export default function PatientProfile() {
   return (
     <ClinicalLayout>
       <SyncBanner />
-      {user && isAdmin(user.role) && <Card title={L('患者管理（管理员）', 'Patient management (admin)')}>
-        <p className="text-sm mb-3">{L('T2 超窗等情况可移入已隐藏。保留全部原始数据，停止患者登录和填报，管理员可恢复。隐藏不是退出研究，是否排除分析须按研究方案决定。', 'Hide for a missed T2 window or other reason. Original data is retained; login and submissions stop until restored by an admin. Hiding does not change study withdrawal or analysis eligibility.')}</p>
-        {!hideOpen ? <button className="min-h-[44px] border rounded-xl px-4 text-error" onClick={() => setHideOpen(true)}>{L('隐藏患者', 'Hide patient')}</button> : <div>
-          <label className="block text-sm">{L('隐藏原因（必填）', 'Reason (required)')}<input maxLength={300} className="block w-full border rounded-lg p-3 my-2" value={hideReason} onChange={e => setHideReason(e.target.value)} /></label>
-          <p className="text-sm mb-2">{L('确认后该患者将从日常列表隐藏，原始作答不会删除。', 'Confirm to hide from routine lists. Responses will be retained.')}</p>
-          <button disabled={hiding} className="min-h-[44px] px-4 border rounded-xl mr-2" onClick={() => setHideOpen(false)}>{L('取消', 'Cancel')}</button>
-          <button disabled={hiding || !hideReason.trim()} className="min-h-[44px] px-4 bg-error text-white rounded-xl disabled:opacity-40" onClick={async () => {
-            setHiding(true)
-            const res = await mutate('hideParticipant', { participantId: p.id, reason: hideReason })
-            setHiding(false)
-            if (res.ok) navigate('/clinical/cohort')
-            else setMsg(opErrorText(res.error, L))
-          }}>{L('确认隐藏，保留数据', 'Confirm hide, retain data')}</button>
-        </div>}
-      </Card>}
       <div className="bg-white rounded-2xl p-5 border border-surface-variant shadow-sm mb-4">
         <div className="flex items-start justify-between mb-3 gap-2">
           <div>
@@ -113,7 +98,28 @@ export default function PatientProfile() {
             <p>{L('账号', 'Username')}: <b className="font-mono">{login.username}</b> · {L('密码', 'Password')}: <b className="font-mono">{login.password}</b></p>
           </div>
         )}
-        {msg && <p className="mt-2 text-sm text-on-surface-variant">{msg}</p>}
+        {user && isAdmin(user.role) && <details className="bg-white border border-surface-variant rounded-2xl p-4 mb-4">
+        <summary className="cursor-pointer min-h-[44px] flex items-center gap-2 font-semibold text-on-surface">{L('患者管理 · 隐藏与恢复', 'Patient management · Hide and restore')}<Icon name="expand_more" className="ml-auto shrink-0" /></summary>
+        <div className="pt-3 border-t border-surface-variant">
+        <p className="text-sm leading-relaxed text-on-surface-variant mb-3">{L('T2 超窗等情况可移入已隐藏。保留全部原始数据，停止患者登录和填报，管理员可恢复。隐藏不是退出研究，是否排除分析须按研究方案决定。', 'Hide for a missed T2 window or other reason. Original data is retained; login and submissions stop until restored by an admin. Hiding does not change study withdrawal or analysis eligibility.')}</p>
+        {!hideOpen ? <button className="w-full sm:w-auto min-h-[48px] border border-error rounded-xl px-4 text-error font-semibold" onClick={() => setHideOpen(true)}>{L('隐藏患者', 'Hide patient')}</button> : <div>
+          <p className="font-semibold text-on-surface mb-3 break-all">{L('操作患者：', 'Participant: ')}{p.id}</p>
+          <label className="block text-sm font-medium">{L('隐藏原因（必填）', 'Reason (required)')}<textarea rows={3} maxLength={300} className="block w-full min-w-0 border border-outline-variant rounded-xl p-3 my-2 text-base resize-y focus-visible:outline-2 focus-visible:outline-primary" value={hideReason} onChange={e => setHideReason(e.target.value)} /></label>
+          <p className="text-sm mb-2">{L('确认后该患者将从日常列表隐藏，原始作答不会删除。', 'Confirm to hide from routine lists. Responses will be retained.')}</p>
+          <div className="flex flex-col-reverse sm:flex-row gap-3 mt-4">
+          <button disabled={hiding} className="w-full sm:w-auto min-h-[48px] px-4 border border-outline-variant rounded-xl" onClick={() => setHideOpen(false)}>{L('取消', 'Cancel')}</button>
+          <button disabled={hiding || !hideReason.trim()} className="w-full sm:w-auto min-h-[48px] px-4 bg-error text-white rounded-xl font-semibold disabled:opacity-40" onClick={async () => {
+            setHiding(true)
+            const res = await mutate('hideParticipant', { participantId: p.id, reason: hideReason })
+            setHiding(false)
+            if (res.ok) navigate('/clinical/cohort')
+            else setMsg(opErrorText(res.error, L))
+          }}>{hiding ? L('正在隐藏…', 'Hiding…') : L('确认隐藏，保留数据', 'Confirm hide, retain data')}</button>
+          </div>
+        </div>}
+      </div>
+      </details>}
+      {msg && <p className="mt-2 text-sm text-on-surface-variant">{msg}</p>}
         <p className="mt-3 text-sm font-semibold text-secondary">
           {visits.length ? L(`累计已提交 ${visits.filter(v => v.status === 'done').length}/${visits.length}`, `Total submitted ${visits.filter(v => v.status === 'done').length}/${visits.length}`) : L('待安排评估日期', 'Awaiting assessment dates')}
         </p>

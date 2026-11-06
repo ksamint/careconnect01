@@ -8,7 +8,7 @@ import { useL } from '../../study/useL'
 import { ClinicalLayout } from '../../components/layout'
 import { Icon, RiskBadge } from '../../components/ui'
 import { SyncBanner, VisitStatusPill } from '../../components/study'
-import { allVisitStates, latestSubmission, currentResponses, alertLevel, VISITS, visitState } from '../../study/logic'
+import { allVisitStates, latestSubmission, currentResponses, alertLevel, VISITS, visitState, fmtTime } from '../../study/logic'
 import type { Participant, StudyData } from '../../study/types'
 
 type Filter = 'all' | 'today' | 'alerts' | 'verify'
@@ -31,7 +31,7 @@ function summarize(data: StudyData, p: Participant) {
 }
 
 export default function CohortDashboard() {
-  const { tr, logout, user } = useApp()
+  const { tr, logout, user, locale } = useApp()
   const { data, mutate } = useStudy()
   const [archiveMessage, setArchiveMessage] = useState('')
   const [restoring, setRestoring] = useState(false)
@@ -73,15 +73,16 @@ export default function CohortDashboard() {
   return (
     <ClinicalLayout>
       <SyncBanner />
-      {user && isAdmin(user.role) && <details className="bg-white border rounded-2xl p-4 mb-4">
-        <summary className="cursor-pointer min-h-[44px] font-semibold">{L('已隐藏患者（管理员可恢复）', 'Hidden patients (admin restore)')} · {data.hiddenParticipants?.length ?? 0}</summary>
-        <p className="text-sm text-outline my-2">{L('原始数据均保留；恢复后重新显示，原有退出研究状态不变。', 'Original data is retained. Restore returns the record to view without changing withdrawal status.')}</p>
-        {data.hiddenParticipants?.map(p => <div key={p.id} className="border-t py-3 flex justify-between items-center gap-3"><div><b>{p.id}</b><p className="text-sm">{p.hiddenReason}</p><p className="text-xs text-outline">{p.hiddenAt}</p></div><button disabled={restoring} className="min-h-[44px] px-4 rounded-xl border disabled:opacity-40" onClick={async () => {
+      {user && isAdmin(user.role) && <details className="bg-white border border-surface-variant rounded-2xl p-4 mb-4">
+        <summary className="cursor-pointer min-h-[48px] leading-relaxed font-semibold">{L('已隐藏患者', 'Hidden patients')} · {data.hiddenParticipants?.length ?? 0}</summary>
+        <p className="text-sm leading-relaxed text-on-surface-variant my-3">{L('原始数据均保留；恢复后重新显示，原有退出研究状态不变。', 'Original data is retained. Restore returns the record to view without changing withdrawal status.')}</p>
+        {data.hiddenParticipants?.map(p => <div key={p.id} className="border-t border-surface-variant py-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3"><div className="min-w-0"><b className="break-all">{p.id}</b><p className="text-sm leading-relaxed whitespace-pre-wrap break-words mt-1">{p.hiddenReason}</p><p className="text-xs text-on-surface-variant mt-1">{L('隐藏于 ', 'Hidden on ')}{fmtTime(p.hiddenAt, locale)}</p></div><button disabled={restoring} aria-label={L('恢复患者 ', 'Restore participant ') + p.id} className="w-full sm:w-auto shrink-0 min-h-[48px] px-5 rounded-xl border border-primary text-primary font-semibold disabled:opacity-40" onClick={async () => {
           setRestoring(true)
           const res = await mutate('restoreParticipant', { participantId: p.id })
           setRestoring(false)
           setArchiveMessage(res.ok ? L('已恢复患者', 'Participant restored') : opErrorText(res.error, L))
-        }}>{L('恢复', 'Restore')}</button></div>)}
+        }}>{restoring ? L('正在恢复…', 'Restoring…') : L('恢复', 'Restore')}</button></div>)}
+        {!data.hiddenParticipants?.length && <p className="text-sm text-on-surface-variant py-3">{L('暂无已隐藏患者', 'No hidden patients')}</p>}
         {archiveMessage && <p role="status">{archiveMessage}</p>}
       </details>}
       <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm border border-surface-variant grid grid-cols-4 gap-2 mb-4 text-center">
