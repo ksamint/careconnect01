@@ -1,3 +1,5 @@
+import { isAdmin } from '../../auth'
+import { opErrorText } from '../../study/uiText'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useApp } from '../../context/AppContext'
@@ -29,8 +31,10 @@ function summarize(data: StudyData, p: Participant) {
 }
 
 export default function CohortDashboard() {
-  const { tr, logout } = useApp()
-  const { data } = useStudy()
+  const { tr, logout, user } = useApp()
+  const { data, mutate } = useStudy()
+  const [archiveMessage, setArchiveMessage] = useState('')
+  const [restoring, setRestoring] = useState(false)
   const L = useL()
   const navigate = useNavigate()
   const [filter, setFilter] = useState<Filter>('all')
@@ -69,6 +73,17 @@ export default function CohortDashboard() {
   return (
     <ClinicalLayout>
       <SyncBanner />
+      {user && isAdmin(user.role) && <details className="bg-white border rounded-2xl p-4 mb-4">
+        <summary className="cursor-pointer min-h-[44px] font-semibold">{L('已隐藏患者（管理员可恢复）', 'Hidden patients (admin restore)')} · {data.hiddenParticipants?.length ?? 0}</summary>
+        <p className="text-sm text-outline my-2">{L('原始数据均保留；恢复后重新显示，原有退出研究状态不变。', 'Original data is retained. Restore returns the record to view without changing withdrawal status.')}</p>
+        {data.hiddenParticipants?.map(p => <div key={p.id} className="border-t py-3 flex justify-between items-center gap-3"><div><b>{p.id}</b><p className="text-sm">{p.hiddenReason}</p><p className="text-xs text-outline">{p.hiddenAt}</p></div><button disabled={restoring} className="min-h-[44px] px-4 rounded-xl border disabled:opacity-40" onClick={async () => {
+          setRestoring(true)
+          const res = await mutate('restoreParticipant', { participantId: p.id })
+          setRestoring(false)
+          setArchiveMessage(res.ok ? L('已恢复患者', 'Participant restored') : opErrorText(res.error, L))
+        }}>{L('恢复', 'Restore')}</button></div>)}
+        {archiveMessage && <p role="status">{archiveMessage}</p>}
+      </details>}
       <section className="bg-surface-container-lowest rounded-2xl p-4 shadow-sm border border-surface-variant grid grid-cols-4 gap-2 mb-4 text-center">
         {[
           [L('在组', 'Active'), counts.all, 'text-primary'],

@@ -133,6 +133,7 @@ async function api(req, res, url) {
     }
     if (row.participant_id) {
       const p = get('SELECT data FROM participants WHERE id = ?', row.participant_id)
+      if (p && JSON.parse(p.data).hiddenAt) return send(res, 403, { error: 'participant_hidden' })
       if (p && JSON.parse(p.data).status === 'withdrawn') return send(res, 403, { error: 'withdrawn' })
     }
     failures.delete(key)

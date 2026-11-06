@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { StudyData } from './types'
 
 export type OpName =
+  | 'hideParticipant' | 'restoreParticipant'
   | 'enroll' | 'resetPatientLogin' | 'updateParticipant' | 'submit' | 'revise' | 'verify'
   | 'contact' | 'markMissed' | 'alertAction' | 'updateConfig' | 'checklist' | 'setRealEnrollment'
 

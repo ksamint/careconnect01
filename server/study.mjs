@@ -191,7 +191,8 @@ export function studyFor(user) {
   if (!canRead(user)) {
     // Patients see only their own record and submissions — nothing about other participants.
     const pid = get('SELECT participant_id FROM users WHERE username = ?', user.username)?.participant_id
-    const participant = pid ? getParticipant(pid) : null
+    const record = pid ? getParticipant(pid) : null
+    const participant = record?.hiddenAt ? null : record
     return {
       schemaVersion: 1,
       config,
@@ -205,15 +206,20 @@ export function studyFor(user) {
     }
   }
 
+  const participants = all('SELECT data FROM participants ORDER BY id').map(parse)
+  const visible = new Set(participants.filter(p => !p.hiddenAt).map(p => p.id))
+  const submissions = all('SELECT data FROM submissions').map(parse).filter(s => visible.has(s.participantId))
+  const submissionIds = new Set(submissions.map(s => s.id))
   return {
     schemaVersion: 1,
     config,
-    participants: all('SELECT data FROM participants ORDER BY id').map(parse).map(p => isStaff(user) ? withIdentity(p) : p),
-    submissions: all('SELECT data FROM submissions').map(parse).map(withVerification),
-    revisions: all('SELECT data FROM revisions').map(parse),
-    contacts: all('SELECT data FROM contacts').map(parse),
-    missedVisits: all('SELECT data FROM missed_visits').map(parse),
-    alertActions: all('SELECT data FROM alert_actions').map(parse),
+    hiddenParticipants: isAdmin(user) ? participants.filter(p => p.hiddenAt).map(p => ({ id: p.id, hiddenAt: p.hiddenAt, hiddenReason: p.hiddenReason })) : [],
+    participants: all('SELECT data FROM participants ORDER BY id').map(parse).filter(p => visible.has(p.id)).map(p => isStaff(user) ? withIdentity(p) : p),
+    submissions: submissions.map(withVerification),
+    revisions: all('SELECT data FROM revisions').map(parse).filter(r => submissionIds.has(r.submissionId)),
+    contacts: all('SELECT data FROM contacts').map(parse).filter(r => visible.has(r.participantId)),
+    missedVisits: all('SELECT data FROM missed_visits').map(parse).filter(r => visible.has(r.participantId)),
+    alertActions: all('SELECT data FROM alert_actions').map(parse).filter(r => visible.has(r.participantId)),
     audit: isAdmin(user) || user.portal === 'research' ? all('SELECT data FROM audit ORDER BY seq DESC').map(parse) : [],
   }
 }
@@ -279,6 +285,32 @@ export function applyOp(user, op, payload = {}, password) {
       })
     }
 
+    case 'hideParticipant':
+    case 'restoreParticipant': {
+      if (!isAdmin(user)) throw new HttpError(403, 'forbidden')
+      return tx(() => {
+        const p = getParticipant(str(payload.participantId))
+        if (!p) throw new HttpError(404, 'not_found')
+        const before = { hiddenAt: p.hiddenAt, hiddenBy: p.hiddenBy, hiddenReason: p.hiddenReason }
+        if (op === 'hideParticipant') {
+          const reason = str(payload.reason, 300).trim()
+          if (!reason) throw new HttpError(400, 'reason_required')
+          if (p.hiddenAt) throw new HttpError(409, 'already_hidden')
+          p.hiddenAt = now
+          p.hiddenBy = actor
+          p.hiddenReason = reason
+          if (p.username) run('DELETE FROM sessions WHERE username = ?', p.username)
+        } else {
+          delete p.hiddenAt
+          delete p.hiddenBy
+          delete p.hiddenReason
+        }
+        saveParticipant(p)
+        audit(actor, op === 'hideParticipant' ? 'hide_participant' : 'restore_participant', 'participant', p.id, { before, reason: str(payload.reason, 300) })
+        return { participantId: p.id }
+      })
+    }
+
     case 'updateParticipant': {
       requireStaff(user)
       return tx(() => {
@@ -316,6 +348,7 @@ export function applyOp(user, op, payload = {}, password) {
       const linked = get('SELECT participant_id FROM users WHERE username = ?', actor)?.participant_id
       const self = linked === p.id
       if (!self) requireStaff(user)
+      if (p.hiddenAt) throw new HttpError(409, 'participant_hidden')
       if (p.status !== 'active') throw new HttpError(409, 'withdrawn')
       const cycleNo = Number(payload.cycleNo)
       if (!p.cycles.some(c => c.cycleNo === cycleNo)) throw new HttpError(400, 'invalid_cycle')

@@ -18,6 +18,8 @@ export function opErrorText(code: string, L: (zh: string, en: string) => string)
     invalid_date: ['日期格式不正确', 'Invalid date'],
     invalid_cycles: ['周期信息不完整（周期号不能重复，输注日期必填）', 'Cycle data invalid (unique cycle no., infusion date required)'],
     invalid_completed_at: ['填写时间不能晚于现在', 'Completion time cannot be in the future'],
+    participant_hidden: ['该患者已隐藏，请联系管理员恢复', 'Participant hidden; contact an administrator'],
+    already_hidden: ['该患者已隐藏', 'Participant already hidden'],
     withdrawn: ['该患者已退出研究', 'Participant has withdrawn'],
     forbidden: ['当前账号无此权限', 'Not permitted for this account'],
     network: ['网络连接失败，请稍后重试', 'Network error, please retry'],

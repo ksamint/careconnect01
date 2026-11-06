@@ -161,6 +161,7 @@ export interface AuditEntry {
 export interface StudyData {
   schemaVersion: 1
   config: StudyConfig
+  hiddenParticipants?: { id: string; hiddenAt: string; hiddenReason: string }[]
   participants: Participant[]
   submissions: Submission[]
   revisions: Revision[]
